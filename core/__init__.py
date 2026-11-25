@@ -1,1 +1,1 @@
-# QuizForge core package
+# SecureTest core package

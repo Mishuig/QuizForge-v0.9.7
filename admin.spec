@@ -1,15 +1,67 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_all
+from PyInstaller.utils.hooks import collect_all, collect_submodules
 
-datas = [('assets', 'assets'), ('client/ui', 'client/ui'), ('fonts', 'fonts')]
+datas = [
+    ('assets', 'assets'),
+    ('client/ui', 'client/ui'),
+    ('fonts', 'fonts'),
+]
 binaries = []
-hiddenimports = ['admin', 'admin.students_tab', 'admin.tests_tab', 'admin.results_tab', 'core', 'core.ui_kit', 'core.ui_theme', 'core.db', 'PyQt6.QtSvg']
+hiddenimports = [
+    'admin',
+    'admin.students_tab',
+    'admin.tests_tab', 
+    'admin.results_tab',
+    'admin.main',
+    'core',
+    'core.ui_kit',
+    'core.ui_theme',
+    'core.db',
+    'core.dialogs',
+    'core.config_loader',
+    'core.admin_auth',
+    'PyQt6.QtSvg',
+    'PyQt6.QtCore',
+    'PyQt6.QtGui',
+    'PyQt6.QtWidgets',
+]
 
+# Collect all from admin and core
 tmp = collect_all('admin')
-datas += tmp[0]; binaries += tmp[1]; hiddenimports += tmp[2]
-tmp = collect_all('core')
-datas += tmp[0]; binaries += tmp[1]; hiddenimports += tmp[2]
+datas += tmp[0]
+binaries += tmp[1]
+hiddenimports += tmp[2]
 
-a = Analysis(['admin/main.py'], pathex=['.'], binaries=binaries, datas=datas, hiddenimports=hiddenimports, excludes=['tkinter'])
+tmp = collect_all('core')
+datas += tmp[0]
+binaries += tmp[1]
+hiddenimports += tmp[2]
+
+a = Analysis(
+    ['admin/main.py'],
+    pathex=['.'],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=['tkinter'],
+    noarchive=False,
+)
 pyz = PYZ(a.pure)
-exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name='QuizForge-Admin', console=False, icon='assets/logo-admin.ico')
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.datas,
+    [],
+    name='QuizForge-Admin',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=False,
+    icon='assets/logo-admin.ico',
+)

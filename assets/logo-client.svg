@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Anvil -->
+  <polygon points="70,170 186,170 155,105 101,105" fill="#3b82f6"/>
+  <!-- Lightning -->
+  <polygon points="118,45 152,45 128,115 158,115 95,210 138,115 108,115" fill="#facc15"/>
+</svg>

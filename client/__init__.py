@@ -1,1 +1,1 @@
-# QuizForge client package
+# SecureTest client package

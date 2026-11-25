@@ -1,0 +1,189 @@
+/* QuizForge — адаптивна тема (світла + темна) */
+
+* {
+    font-family: "Segoe UI", "DejaVu Sans", sans-serif;
+    font-size: 14px;
+}
+
+/* --- Світла тема (за замовчуванням) --- */
+QMainWindow, QWidget {
+    background-color: #f8fafc;
+    color: #1e293b;
+}
+
+QLabel { color: #1e293b; }
+QLabel#titleLabel { font-size: 22px; font-weight: 600; color: #0f172a; }
+QLabel#subtitleLabel { font-size: 13px; color: #64748b; }
+QLabel#logoLabel { font-size: 20px; font-weight: 700; color: #0f172a; }
+
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 14px;
+    selection-background-color: #00a9e0;
+    selection-color: #ffffff;
+    color: #1e293b;
+}
+
+QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
+    border: 1px solid #00a9e0;
+}
+
+QPushButton {
+    background-color: #00a9e0;
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-weight: 600;
+    min-height: 22px;
+}
+QPushButton:hover { background-color: #0095c7; }
+QPushButton:pressed { background-color: #0080ad; }
+QPushButton:disabled { background-color: #94a3b8; color: #e2e8f0; }
+QPushButton#secondaryButton { background-color: #e2e8f0; color: #1e293b; }
+QPushButton#secondaryButton:hover { background-color: #cbd5e1; }
+QPushButton#dangerButton { background-color: #dc2626; }
+QPushButton#dangerButton:hover { background-color: #b91c1c; }
+
+QTabWidget::pane { border: 1px solid #e2e8f0; border-radius: 8px; background: #ffffff; }
+QTabBar::tab { background: #e2e8f0; color: #475569; padding: 10px 18px; margin-right: 2px; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+QTabBar::tab:selected { background: #ffffff; color: #00a9e0; font-weight: 600; }
+
+QTableWidget, QTableView {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    gridline-color: #e2e8f0;
+    selection-background-color: #dbeafe;
+    selection-color: #1e293b;
+    color: #1e293b;
+}
+QHeaderView::section {
+    background-color: #f1f5f9;
+    color: #475569;
+    padding: 8px;
+    border: none;
+    border-bottom: 1px solid #e2e8f0;
+    font-weight: 600;
+}
+
+QScrollBar:vertical { background: #f1f5f9; width: 10px; margin: 0; }
+QScrollBar::handle:vertical { background: #cbd5e1; border-radius: 5px; min-height: 30px; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+
+QMessageBox { background-color: #ffffff; }
+QStatusBar { background: #f1f5f9; color: #64748b; }
+
+/* --- Темна тема --- */
+QMainWindow[theme="dark"], QWidget[theme="dark"] {
+    background-color: #0f172a;
+    color: #e2e8f0;
+}
+QLabel[theme="dark"] { color: #e2e8f0; }
+QLabel#titleLabel[theme="dark"] { color: #f1f5f9; }
+QLabel#subtitleLabel[theme="dark"] { color: #94a3b8; }
+QLabel#logoLabel[theme="dark"] { color: #f1f5f9; }
+
+QLineEdit[theme="dark"], QTextEdit[theme="dark"], QPlainTextEdit[theme="dark"],
+QSpinBox[theme="dark"], QDoubleSpinBox[theme="dark"], QComboBox[theme="dark"] {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    color: #f1f5f9;
+}
+QLineEdit[theme="dark"]:focus, QTextEdit[theme="dark"]:focus {
+    border: 1px solid #00a9e0;
+}
+
+QPushButton[theme="dark"] { background-color: #00a9e0; color: #ffffff; }
+QPushButton#secondaryButton[theme="dark"] { background-color: #334155; color: #e2e8f0; }
+QPushButton#secondaryButton[theme="dark"]:hover { background-color: #475569; }
+
+QTableWidget[theme="dark"], QTableView[theme="dark"] {
+    background-color: #1e293b;
+    border: 1px solid #334155;
+    gridline-color: #334155;
+    selection-background-color: #0c4a6e;
+    color: #e2e8f0;
+}
+QHeaderView::section[theme="dark"] {
+    background-color: #1e293b;
+    color: #94a3b8;
+    border-bottom: 1px solid #334155;
+}
+
+/* --- Групи (секції форм) --- */
+QGroupBox {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-top: 14px;
+    padding: 16px 12px 12px 12px;
+    font-weight: 600;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    left: 12px;
+    padding: 0 6px;
+    color: #00a9e0;
+    font-size: 14px;
+    font-weight: 600;
+}
+QGroupBox[theme="dark"] {
+    border: 1px solid #334155;
+    color: #e2e8f0;
+}
+QGroupBox::title[theme="dark"] {
+    color: #00a9e0;
+}
+
+/* --- Чекбокси --- */
+QCheckBox { spacing: 8px; }
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #64748b;
+    border-radius: 4px;
+    background: #ffffff;
+}
+QCheckBox::indicator:hover { border-color: #00a9e0; }
+QCheckBox::indicator:checked {
+    background: #00a9e0;
+    border-color: #00a9e0;
+}
+QCheckBox::indicator[theme="dark"] {
+    background: #1e293b;
+    border-color: #475569;
+}
+QCheckBox::indicator:checked[theme="dark"] {
+    background: #00a9e0;
+    border-color: #00a9e0;
+}
+
+/* --- Радіокнопки --- */
+QRadioButton { spacing: 10px; padding: 4px; }
+QRadioButton::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    border: 2px solid #64748b;
+    background: #ffffff;
+}
+QRadioButton::indicator:hover { border-color: #00a9e0; }
+QRadioButton::indicator:checked {
+    border: 2px solid #00a9e0;
+    background: #00a9e0;
+}
+QRadioButton::indicator[theme="dark"] {
+    background: #1e293b;
+    border-color: #64748b;
+}
+QRadioButton::indicator:checked[theme="dark"] {
+    background: #00a9e0;
+    border-color: #00a9e0;
+}
+
+/* --- Діалоги --- */
+QDialog { background-color: #f8fafc; }
+QDialog[theme="dark"] { background-color: #0f172a; color: #e2e8f0; }

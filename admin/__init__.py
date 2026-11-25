@@ -1,1 +1,1 @@
-# QuizForge admin package
+# SecureTest admin package
