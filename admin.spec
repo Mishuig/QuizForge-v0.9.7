@@ -8,11 +8,13 @@ datas = [
 ]
 binaries = []
 hiddenimports = [
+    # Admin modules
     'admin',
     'admin.students_tab',
-    'admin.tests_tab', 
+    'admin.tests_tab',
     'admin.results_tab',
     'admin.main',
+    # Core modules
     'core',
     'core.ui_kit',
     'core.ui_theme',
@@ -20,19 +22,36 @@ hiddenimports = [
     'core.dialogs',
     'core.config_loader',
     'core.admin_auth',
+    'core.mailer',
+    'core.otp',
+    'core.scoring',
+    'core.report_builder',
+    'core.excel_import',
+    'core.models',
+    # Qt
+    'PyQt6',
     'PyQt6.QtSvg',
     'PyQt6.QtCore',
     'PyQt6.QtGui',
     'PyQt6.QtWidgets',
+    'PyQt6.sip',
+    # Icons
+    'qtawesome',
+    'qtawesome.iconic_font',
 ]
 
-# Collect all from admin and core
+# Collect all submodules
 tmp = collect_all('admin')
 datas += tmp[0]
 binaries += tmp[1]
 hiddenimports += tmp[2]
 
 tmp = collect_all('core')
+datas += tmp[0]
+binaries += tmp[1]
+hiddenimports += tmp[2]
+
+tmp = collect_all('qtawesome')
 datas += tmp[0]
 binaries += tmp[1]
 hiddenimports += tmp[2]
