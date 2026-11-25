@@ -1,4 +1,4 @@
-"""Спільні будівельні блоки адаптивної верстки (grid + stretch)."""
+"""Спільні будівельні блоки адаптивної верстки."""
 
 from __future__ import annotations
 
@@ -63,6 +63,32 @@ def align_center(label: QLabel) -> QLabel:
     label.setAlignment(Qt.AlignmentFlag.AlignCenter)
     label.setWordWrap(True)
     return label
+
+
+class AdaptiveButton(QPushButton):
+    def __init__(self, text: str, short: str = None, parent=None):
+        super().__init__(text, parent)
+        self._full_text = text
+        self._short_text = short or text[:6]
+        self._min_font = 8
+        self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        available = self.width() - 16
+        if available <= 0:
+            return
+        font = self.font()
+        for size in range(font.pointSize() or 12, self._min_font - 1, -1):
+            font.setPointSize(size)
+            fm = QFontMetrics(font)
+            if fm.horizontalAdvance(self._full_text) <= available:
+                self.setFont(font)
+                self.setText(self._full_text)
+                return
+        font.setPointSize(self._min_font)
+        self.setFont(font)
+        self.setText(self._short_text)
 
 
 def icon_button(icon_name: str, tooltip: str, color: str = "#E6EDF7", size: int = 20, danger: bool = False, accent: bool = False) -> QPushButton:
