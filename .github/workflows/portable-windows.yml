@@ -40,92 +40,76 @@ jobs:
           QT_QPA_PLATFORM: offscreen
 
   build:
-    name: Build ${{ matrix.app }}
+    name: Build portable
     needs: test
     runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - app: Client
-            entry: client/main.py
-            icon: assets/logo-client.ico
-          - app: Admin
-            entry: admin/main.py
-            icon: assets/logo-admin.ico
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
+
       - name: Install dependencies
         shell: bash
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
-      - name: Build ${{ matrix.app }}
+
+      - name: Build Admin
         shell: bash
         run: |
-          if [ "${{ matrix.app }}" = "Admin" ] && [ -f "admin.spec" ]; then
-            echo "Building Admin with spec file"
+          if [ -f "admin.spec" ]; then
             pyinstaller --noconfirm --clean admin.spec
           else
             pyinstaller --noconfirm --clean --onefile --windowed \
-              --name "QuizForge-${{ matrix.app }}" \
-              --icon "${{ matrix.icon }}" \
+              --name "QuizForge-Admin" \
+              --icon "assets/logo-admin.ico" \
               --paths . \
               --add-data "assets;assets" \
+              --add-data "admin;admin" \
+              --add-data "core;core" \
               --add-data "client/ui;client/ui" \
               --add-data "fonts;fonts" \
-              --hidden-import PyQt6.QtSvg \
+              --hidden-import admin.students_tab \
+              --hidden-import admin.tests_tab \
+              --hidden-import admin.results_tab \
               --collect-submodules admin \
               --collect-submodules core \
-              "${{ matrix.entry }}"
+              admin/main.py
           fi
-          ls -lh dist/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: exe-${{ matrix.app }}
-          path: dist/QuizForge-${{ matrix.app }}.exe
-          retention-days: 7
 
-  package:
-    name: Package portable
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Resolve version
-        id: ver
+      - name: Build Client
+        shell: bash
         run: |
-          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
-            echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          else
-            echo "version=dev-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-          fi
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: exe-*
-          merge-multiple: true
-          path: dl
-      - name: Assemble portable
+          pyinstaller --noconfirm --clean --onefile --windowed \
+            --name "QuizForge-Client" \
+            --icon "assets/logo-client.ico" \
+            --paths . \
+            --add-data "assets;assets" \
+            --add-data "core;core" \
+            --add-data "client/ui;client/ui" \
+            --add-data "fonts;fonts" \
+            --collect-submodules core \
+            client/main.py
+
+      - name: Package portable
+        shell: bash
         run: |
-          VERSION="${{ steps.ver.outputs.version }}"
+          VERSION="${GITHUB_SHA::7}"
           NAME="QuizForge-Portable-Windows-${VERSION}"
           mkdir -p "$NAME"
-          cp dl/*.exe "$NAME/"
+          cp dist/QuizForge-Admin.exe dist/QuizForge-Client.exe "$NAME/"
           cp config.json.example "$NAME/config.json" 2>/dev/null || true
-          zip -r "${NAME}.zip" "$NAME"
+          cp README.md FIRST_RUN.md LICENSE "$NAME/" 2>/dev/null || true
+          cp -r assets fonts "$NAME/" 2>/dev/null || true
+          echo "$VERSION" > "$NAME/VERSION"
+          7z a "${NAME}.zip" "$NAME"
           echo "ZIP=${NAME}.zip" >> "$GITHUB_ENV"
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload portable
+        uses: actions/upload-artifact@v4
         with:
-          name: QuizForge-Portable-${{ steps.ver.outputs.version }}
-          path: ${{ env.ZIP }}
+          name: QuizForge-Portable
+          path: QuizForge-Portable-*.zip
           retention-days: 30
-      - name: Create Release
-        if: github.ref_type == 'tag'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ${{ env.ZIP }}
-          generate_release_notes: true
