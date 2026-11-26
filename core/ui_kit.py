@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QFontMetrics
+from PyQt6.QtCore import Qt, QSize, QTimer, QPoint
+from PyQt6.QtGui import QFontMetrics, QCursor
 from PyQt6.QtWidgets import (
-    QFrame, QPushButton, QGridLayout, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget,
+    QFrame, QPushButton, QGridLayout, QHBoxLayout, QLabel, QSizePolicy,
+    QVBoxLayout, QWidget, QToolTip,
 )
 
 from core import ui_theme
@@ -130,15 +131,55 @@ class AdaptiveButton(QPushButton):
         self.setText(self._short_text)
 
 
-def icon_button(icon_name: str, tooltip: str, color: str = "#E6EDF7", size: int = 20, danger: bool = False, accent: bool = False) -> QPushButton:
+class DelayedTooltipButton(QPushButton):
+    """Кнопка з підказкою з затримкою."""
+
+    def __init__(self, tooltip: str, delay_ms: int = 400, parent=None):
+        super().__init__(parent)
+        self._tooltip = tooltip
+        self._delay_ms = delay_ms
+        self._timer = QTimer(self)
+        self._timer.setSingleShot(True)
+        self._timer.timeout.connect(self._show_tooltip)
+        self._tooltip_visible = False
+
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        self._timer.start(self._delay_ms)
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self._timer.stop()
+        if self._tooltip_visible:
+            QToolTip.hideText()
+            self._tooltip_visible = False
+
+    def _show_tooltip(self):
+        if self.underMouse():
+            pos = self.mapToGlobal(QPoint(0, self.height() + 4))
+            QToolTip.showText(pos, self._tooltip, self)
+            self._tooltip_visible = True
+
+
+def icon_button(
+    icon_name: str,
+    tooltip: str,
+    color: str = "#E6EDF7",
+    size: int = 20,
+    danger: bool = False,
+    accent: bool = False,
+    delay_ms: int = 400,
+) -> QPushButton:
+    """Іконка-кнопка з підказкою з затримкою."""
     try:
         import qtawesome as qta
         icon = qta.icon(icon_name, color=color)
-        btn = QPushButton(icon, "")
+        btn = DelayedTooltipButton(tooltip, delay_ms)
+        btn.setIcon(icon)
     except Exception:
-        btn = QPushButton(tooltip[:2])
+        btn = DelayedTooltipButton(tooltip, delay_ms)
+        btn.setText(tooltip[:2])
     btn.setObjectName("iconBtn")
-    btn.setToolTip(tooltip)
     btn.setIconSize(QSize(size, size))
     btn.setFixedSize(size + 16, size + 16)
     btn.setCursor(Qt.CursorShape.PointingHandCursor)
