@@ -6,21 +6,19 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any
-from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QAbstractItemView, QCheckBox, QComboBox, QDialog, QDoubleSpinBox, QFileDialog,
-    QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QPushButton,
-    QScrollArea, QSpinBox, QSplitter, QTextEdit, QVBoxLayout, QWidget, QFrame, QGridLayout, QSizePolicy,
+    QCheckBox, QComboBox, QDialog, QDoubleSpinBox, QFileDialog,
+    QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
+    QScrollArea, QSpinBox, QSplitter, QTextEdit, QVBoxLayout, QWidget, QFrame, QGridLayout,
 )
 
 from core.db import Database
-from core.dialogs import Msg, ThemedDialog
+from core.dialogs import Msg
 from core.excel_import import generate_template, parse_excel, questions_to_db_payload
 from core.models import QuestionType
-from core.ui_kit import field, icon_button
+from core.ui_kit import field, icon_button, button_row
 
 logger = logging.getLogger(__name__)
 
@@ -33,18 +31,19 @@ class OptionRow(QWidget):
     def __init__(self, text="", is_correct=False, parent=None):
         super().__init__(parent)
         self.setObjectName("optionRow")
+        self.setMinimumHeight(44)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 4, 0, 4)
-        layout.setSpacing(12)
+        layout.setSpacing(8)
         self.correct_cb = QCheckBox()
         self.correct_cb.setChecked(is_correct)
         self.correct_cb.setToolTip("Правильна відповідь")
-        self.correct_cb.setFixedWidth(28)
+        self.correct_cb.setFixedWidth(24)
         self.text_edit = QLineEdit(text)
         self.text_edit.setPlaceholderText("Текст варіанту")
-        self.text_edit.setMinimumHeight(40)
-        self.remove_btn = icon_button("fa5s.times", "Видалити", "#F87171", size=16, danger=True)
-        self.expand_btn = icon_button("fa5s.edit", "Редагувати", size=16)
+        self.text_edit.setMinimumHeight(36)
+        self.remove_btn = icon_button("fa5s.times", "Видалити", "#F87171", size=14, danger=True)
+        self.expand_btn = icon_button("fa5s.edit", "Редагувати", size=14)
         self.expand_btn.clicked.connect(self._expand)
         layout.addWidget(self.correct_cb)
         layout.addWidget(self.text_edit, stretch=1)
@@ -86,8 +85,8 @@ class TestsTab(QWidget):
         card = QFrame()
         card.setObjectName("card")
         lay = QVBoxLayout(card)
-        lay.setContentsMargins(20, 18, 20, 20)
-        lay.setSpacing(14)
+        lay.setContentsMargins(16, 14, 16, 16)
+        lay.setSpacing(12)
         return card, lay
 
     @staticmethod
@@ -98,28 +97,27 @@ class TestsTab(QWidget):
 
     def _build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(32, 24, 32, 24)
-        root.setSpacing(16)
+        root.setContentsMargins(16, 16, 16, 16)
+        root.setSpacing(12)
         title = QLabel("Тести")
         title.setObjectName("titleLabel")
         root.addWidget(title)
 
         body = QHBoxLayout()
-        body.setSpacing(20)
+        body.setSpacing(12)
         root.addLayout(body, 1)
 
         # Sidebar
         sidebar, side = self._card()
-        sidebar.setMinimumWidth(200)
-        sidebar.setMaximumWidth(280)
+        sidebar.setMinimumWidth(160)
+        sidebar.setMaximumWidth(240)
         side.addWidget(self._heading("Список тестів"))
         self.tests_list = QListWidget()
+        self.tests_list.setMinimumHeight(100)
         self.tests_list.currentItemChanged.connect(self._on_test_selected)
         side.addWidget(self.tests_list, 1)
 
-        # Icon buttons for sidebar
-        btn_row = QHBoxLayout()
-        btn_row.setSpacing(8)
+        # Icon buttons with FlowLayout
         self.btn_new_test = icon_button("fa5s.plus", "Новий тест", "#3b82f6", accent=True)
         self.btn_new_test.clicked.connect(self._new_test)
         self.btn_delete_test = icon_button("fa5s.trash", "Видалити", "#F87171", danger=True)
@@ -128,9 +126,7 @@ class TestsTab(QWidget):
         self.btn_import.clicked.connect(self._import_excel)
         self.btn_template = icon_button("fa5s.file-download", "Шаблон")
         self.btn_template.clicked.connect(self._download_template)
-        for b in (self.btn_new_test, self.btn_delete_test, self.btn_import, self.btn_template):
-            btn_row.addWidget(b)
-        side.addLayout(btn_row)
+        side.addWidget(button_row(self.btn_new_test, self.btn_delete_test, self.btn_import, self.btn_template))
         body.addWidget(sidebar)
 
         # Content area
@@ -139,8 +135,8 @@ class TestsTab(QWidget):
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         content = QWidget()
         col = QVBoxLayout(content)
-        col.setContentsMargins(0, 0, 10, 0)
-        col.setSpacing(16)
+        col.setContentsMargins(0, 0, 8, 0)
+        col.setSpacing(12)
         scroll.setWidget(content)
         body.addWidget(scroll, 1)
 
@@ -161,6 +157,7 @@ class TestsTab(QWidget):
         self.shuffle_o_cb = QCheckBox("Перемішувати варіанти")
 
         pg = QGridLayout()
+        pg.setSpacing(8)
         pg.addWidget(field("Назва", self.title_edit), 0, 0, 1, 2)
         pg.addWidget(field("Ліміт часу", self.time_spin), 1, 0)
         pg.addWidget(field("Прохідний бал", self.pass_spin), 1, 1)
@@ -171,29 +168,26 @@ class TestsTab(QWidget):
         checks.addStretch(1)
         pl.addLayout(checks)
 
-        save_row = QHBoxLayout()
-        save_row.addStretch(1)
         save_test_btn = icon_button("fa5s.save", "Зберегти", "#3b82f6", accent=True)
         save_test_btn.clicked.connect(self._save_test_props)
-        save_row.addWidget(save_test_btn)
-        pl.addLayout(save_row)
+        pl.addWidget(button_row(save_test_btn), alignment=Qt.AlignmentFlag.AlignRight)
         col.addWidget(props)
 
         # Questions
         qcard, ql = self._card()
         ql.addWidget(self._heading("Питання"))
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setChildrenCollapsible(False)
         ql.addWidget(splitter)
 
         # Question list
         q_left = QVBoxLayout()
+        q_left.setSpacing(8)
         self.questions_list = QListWidget()
-        self.questions_list.setMinimumHeight(200)
+        self.questions_list.setMinimumHeight(120)
         self.questions_list.currentItemChanged.connect(self._on_question_selected)
         q_left.addWidget(self.questions_list, 1)
 
-        q_btns = QHBoxLayout()
-        q_btns.setSpacing(8)
         self.btn_q_up = icon_button("fa5s.arrow-up", "Вище")
         self.btn_q_up.clicked.connect(lambda: self._move_question(-1))
         self.btn_q_down = icon_button("fa5s.arrow-down", "Нижче")
@@ -202,20 +196,19 @@ class TestsTab(QWidget):
         self.btn_add_q.clicked.connect(self._add_question)
         self.btn_del_q = icon_button("fa5s.trash", "Видалити питання", "#F87171", danger=True)
         self.btn_del_q.clicked.connect(self._delete_question)
-        for b in (self.btn_q_up, self.btn_q_down, self.btn_add_q, self.btn_del_q):
-            q_btns.addWidget(b)
-        q_left.addLayout(q_btns)
+        q_left.addWidget(button_row(self.btn_q_up, self.btn_q_down, self.btn_add_q, self.btn_del_q))
 
         left_w = QWidget()
         left_w.setLayout(q_left)
-        left_w.setMinimumWidth(180)
+        left_w.setMinimumWidth(140)
         splitter.addWidget(left_w)
 
         # Question editor
         q_right = QVBoxLayout()
+        q_right.setSpacing(10)
         self.q_text = QTextEdit()
         self.q_text.setPlaceholderText("Текст питання")
-        self.q_text.setMinimumHeight(70)
+        self.q_text.setMinimumHeight(60)
         q_right.addWidget(field("Текст питання", self.q_text))
 
         self.q_type = QComboBox()
@@ -230,6 +223,7 @@ class TestsTab(QWidget):
         self.q_points.setValue(1.0)
 
         tp = QGridLayout()
+        tp.setSpacing(8)
         tp.addWidget(field("Тип", self.q_type), 0, 0)
         tp.addWidget(field("Бали", self.q_points), 0, 1)
         q_right.addLayout(tp)
@@ -243,26 +237,29 @@ class TestsTab(QWidget):
         self.options_group = QWidget()
         og = QVBoxLayout(self.options_group)
         og.setContentsMargins(0, 0, 0, 0)
+        og.setSpacing(8)
         cap = QLabel("Варіанти відповідей")
         cap.setObjectName("fieldLabel")
         og.addWidget(cap)
         options_scroll = QScrollArea()
         options_scroll.setWidgetResizable(True)
-        options_scroll.setMinimumHeight(100)
-        options_scroll.setMaximumHeight(400)
+        options_scroll.setMinimumHeight(80)
+        options_scroll.setMaximumHeight(300)
         holder = QWidget()
         self.options_container = QVBoxLayout(holder)
+        self.options_container.setSpacing(6)
         options_scroll.setWidget(holder)
         og.addWidget(options_scroll)
         self._options_scroll = options_scroll
         add_opt_btn = icon_button("fa5s.plus", "Додати варіант")
         add_opt_btn.clicked.connect(lambda: self._add_option_row(focus=True))
-        og.addWidget(add_opt_btn)
+        og.addWidget(button_row(add_opt_btn))
         q_right.addWidget(self.options_group)
 
         # Open answers
         self.open_group = QWidget()
         og2 = QVBoxLayout(self.open_group)
+        og2.setContentsMargins(0, 0, 0, 0)
         self.open_answers_edit = QLineEdit()
         self.open_answers_edit.setPlaceholderText("Київ; Kyiv")
         og2.addWidget(field("Допустимі відповіді", self.open_answers_edit))
@@ -270,16 +267,13 @@ class TestsTab(QWidget):
         self.open_group.hide()
 
         q_right.addStretch(1)
-        save_q_row = QHBoxLayout()
-        save_q_row.addStretch(1)
         self.btn_save_q = icon_button("fa5s.save", "Зберегти питання", "#3b82f6", accent=True)
         self.btn_save_q.clicked.connect(self._save_question)
-        save_q_row.addWidget(self.btn_save_q)
-        q_right.addLayout(save_q_row)
+        q_right.addWidget(button_row(self.btn_save_q), alignment=Qt.AlignmentFlag.AlignRight)
 
         right_w = QWidget()
         right_w.setLayout(q_right)
-        right_w.setMinimumWidth(300)
+        right_w.setMinimumWidth(200)
         splitter.addWidget(right_w)
         splitter.setStretchFactor(0, 2)
         splitter.setStretchFactor(1, 5)
@@ -362,7 +356,7 @@ class TestsTab(QWidget):
         self.questions_list.clear()
         rows = self.db.fetchall("SELECT id, text FROM questions WHERE test_id = ? ORDER BY order_index", (test_id,))
         for i, row in enumerate(rows):
-            item = QListWidgetItem(f"{i+1}. {row['text'][:50]}...")
+            item = QListWidgetItem(f"{i+1}. {row['text'][:40]}...")
             item.setData(Qt.ItemDataRole.UserRole, row["id"])
             self.questions_list.addItem(item)
 
@@ -424,7 +418,7 @@ class TestsTab(QWidget):
     def _add_question(self):
         if not self._current_test_id:
             return
-        qid = self.db.insert("questions", {
+        self.db.insert("questions", {
             "test_id": self._current_test_id,
             "text": "Нове питання",
             "qtype": QuestionType.SINGLE.value,
@@ -446,7 +440,6 @@ class TestsTab(QWidget):
     def _move_question(self, direction):
         if not self._current_question_id:
             return
-        # Simplified move logic
         self._load_questions(self._current_test_id)
 
     def _save_question(self):
@@ -457,7 +450,6 @@ class TestsTab(QWidget):
             "qtype": self.q_type.currentData(),
             "points": self.q_points.value(),
         }, "id = ?", (self._current_question_id,))
-        # Save options
         self.db.execute("DELETE FROM options WHERE question_id = ?", (self._current_question_id,))
         for row in self._option_rows:
             text, correct = row.get_data()
@@ -472,8 +464,7 @@ class TestsTab(QWidget):
             return
         try:
             questions = parse_excel(path)
-            payload = questions_to_db_payload(questions)
-            Msg.information(self, "Імпорт", f"Імпортовано {len(payload)} питань")
+            Msg.information(self, "Імпорт", f"Імпортовано {len(questions)} питань")
         except Exception as exc:
             Msg.critical(self, "Помилка", str(exc))
 
