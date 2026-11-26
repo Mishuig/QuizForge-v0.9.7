@@ -1,6 +1,5 @@
 """
 SecureTest Admin — головне вікно з вкладками.
-Крок 8: Тести, Студенти, Результати + пароль адмінки.
 """
 
 from __future__ import annotations
@@ -9,11 +8,11 @@ import logging
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QFontDatabase, QFont, QPixmap
 from PyQt6.QtWidgets import (
-    QPushButton, QStackedWidget, QApplication, QDialog, QDialogButtonBox,
-    QFormLayout, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QVBoxLayout, QWidget,
+    QPushButton, QStackedWidget, QApplication, QDialog,
+    QHBoxLayout, QLabel, QLineEdit, QMainWindow, QVBoxLayout, QWidget, QSizePolicy,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -40,7 +39,7 @@ class PasswordDialog(ThemedDialog):
         setup = mode == "setup"
         super().__init__(parent, "Перший запуск" if setup else "Вхід адміністратора",
             "Встановіть пароль." if setup else "Введіть пароль.",
-            min_width=440, max_width=560, icon_pixmap=logo_pixmap("logo-admin.svg", 72), centered=True)
+            min_width=360, max_width=480, icon_pixmap=logo_pixmap("logo-admin.svg", 64), centered=True)
         self.mode = mode
         self.setWindowTitle("QuizForge — Адмін")
         self.pass_edit = QLineEdit()
@@ -99,23 +98,31 @@ class MainWindow(QMainWindow):
         self.db = db
         self.config = config
         self.setWindowTitle("QuizForge — Адміністрування")
+        # Мінімальний розмір ~10x10 см
         self.setMinimumSize(380, 380)
-        self.resize(1280, 800)
+        self.resize(1100, 700)
+
         central = QWidget()
         self.setCentralWidget(central)
         root = QVBoxLayout(central)
         root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        # Topbar
         topbar = QWidget()
         topbar.setObjectName("topbar")
-        topbar.setFixedHeight(56)
+        topbar.setMinimumHeight(48)
+        topbar.setMaximumHeight(56)
         bar = QHBoxLayout(topbar)
-        bar.setContentsMargins(24, 0, 24, 0)
-        bar.addWidget(ThemedLogo("logo-admin.svg", 28))
-        bar.addSpacing(10)
+        bar.setContentsMargins(16, 0, 16, 0)
+        bar.setSpacing(8)
+
+        bar.addWidget(ThemedLogo("logo-admin.svg", 24))
         title = QLabel("QuizForge")
         title.setObjectName("logoLabel")
         bar.addWidget(title)
-        bar.addSpacing(28)
+        bar.addSpacing(16)
+
         self.btn_tests = QPushButton("Тести")
         self.btn_users = QPushButton("Користувачі")
         self.btn_results = QPushButton("Результати")
@@ -123,11 +130,15 @@ class MainWindow(QMainWindow):
             b.setObjectName("navTab")
             b.setCheckable(True)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
             bar.addWidget(b)
         bar.addStretch(1)
         bar.addWidget(ThemeToggle())
         root.addWidget(topbar)
+
+        # Content
         self.stack = QStackedWidget()
+        self.stack.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.tests_tab = TestsTab(db)
         self.students_tab = StudentsTab(db, config)
         self.results_tab = ResultsTab(db, config)
@@ -135,6 +146,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.students_tab)
         self.stack.addWidget(self.results_tab)
         root.addWidget(self.stack, 1)
+
         self.btn_tests.clicked.connect(lambda: self._switch(0))
         self.btn_users.clicked.connect(lambda: self._switch(1))
         self.btn_results.clicked.connect(lambda: self._switch(2))
@@ -149,6 +161,20 @@ class MainWindow(QMainWindow):
             self.students_tab.reload()
         elif index == 2:
             self.results_tab.reload()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Адаптуємо шрифт при зміні розміру
+        width = self.width()
+        if width < 600:
+            font_size = 12
+        elif width < 900:
+            font_size = 13
+        else:
+            font_size = 14
+        font = self.font()
+        font.setPointSize(font_size)
+        self.setFont(font)
 
 
 def main():
