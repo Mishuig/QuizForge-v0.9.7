@@ -1,92 +1,57 @@
-# QuizForge — UI/UX Remaster
-
-**Версія:** v0.5.0-uiux-remaster
-**Зміни:** Повністю оновлена темна тема, сучасний вигляд таблиць, кнопок, форм. Функціонал без змін.
-
 # QuizForge
 
+[![Build](https://github.com/Mishuig/QuizForge-v0.9.7/actions/workflows/portable-windows.yml/badge.svg)](https://github.com/Mishuig/QuizForge-v0.9.7/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+
 Повністю десктопний застосунок для Windows 10/11 для захищеного тестування з елементами прокторингу.
-Без браузера, WebView, веб-сервера та хмарних сервісів. Лише нативні віджети PyQt6.
 
-**Назва:** QuizForge  
-**Лого:** assets/logo.png (жовта блискавка + синя кузня)
+## Особливості
 
-## Адаптивність інтерфейсу
+- Автентифікація через OTP (email)
+- Прокторинг: блокування Alt+Tab, скріншоти
+- Темна/світла тема з перемикачем
+- Адаптивний інтерфейс
+- Імпорт тестів з Excel
+- Генерація звітів PDF
 
-- Вертикальне центрування діалогів через `addStretch(1)` зверху і знизу
-- Максимальні ширини елементів (480–520 px) для стабільного центрування
-- WordWrap на всіх текстових лейблах
-- Компактні хедери з логотипом у всіх основних екранах і вкладках адмінки
-- Мінімальні розміри кнопок і полів
-- Таблиці та списки розтягуються на весь доступний простір
+## Завантаження
 
-## Вимоги
+[![Download](https://img.shields.io/badge/Download-Portable%20Build-green)](https://github.com/Mishuig/QuizForge-v0.9.7/actions)
 
-- Windows 10/11
-- Python 3.11+
-- Див. `requirements.txt`
+1. Перейдіть до [Actions](https://github.com/Mishuig/QuizForge-v0.9.7/actions)
+2. Завантажте артефакт `QuizForge-Portable-*.zip`
+3. Розпакуйте і запустіть `QuizForge-Admin.exe` або `QuizForge-Client.exe`
 
-## Запуск
+## Запуск з коду
 
 ```bash
+git clone https://github.com/Mishuig/QuizForge-v0.9.7.git
+cd QuizForge-v0.9.7
 pip install -r requirements.txt
-python -m client.main          # клієнт (тестування)
-python -m admin.main           # адмін-панель
+python -m admin.main    # адмін-панель
+python -m client.main   # клієнт тестування
 ```
 
 ## Структура
 
-- `client/` — клієнтська частина (вхід, тест, прокторинг)
-- `admin/` — адмін-панель (тести, студенти, результати)
-- `core/` — спільна логіка (БД, OTP, пошта, звіти)
-- `assets/` — логотип
-
-## Тести
-
-Усі тести проходять успішно (33/33):
-
-```bash
-pip install -r requirements.txt pytest
-python -m pytest tests/ -v
+```
+QuizForge/
+├── admin/           # Адмін-панель
+├── client/          # Клієнт тестування
+├── core/            # Спільна логіка
+├── assets/          # Логотипи, іконки
+├── tests/           # Unit тести
+├── fonts/           # Шрифти
+├── config.json.example
+└── requirements.txt
 ```
 
-## Підготовка до GitHub
+## Документація
 
-Проєкт готовий до публікації. Рекомендована структура репозиторію:
+- [FIRST_RUN.md](FIRST_RUN.md) — перший запуск
+- [CONTRIBUTING.md](CONTRIBUTING.md) — розробка
 
-- Не комітити `*.db`, `reports/`, `screenshots/`, `__pycache__/`
-- Логотип знаходиться в `assets/logo.png`
-- Перед першим запуском відредагуйте `config.json` (SMTP, домени, назва)
+## Ліцензія
 
-## Файли для GitHub
-
-- `config.json.example` — приклад конфігурації (скопіюйте в `config.json` і відредагуйте)
-- `CONTRIBUTING.md` — як долучитися до розробки
-- `LICENSE` — MIT
-
-Перед першим комітом переконайтеся, що `config.json` з реальними паролями **не** потрапляє в репозиторій (він уже в `.gitignore` через `*.db`, але сам `config.json` краще тримати локально або додати в `.gitignore` якщо містить секрети).
-
-## Портативна збірка
-
-GitHub Action `Portable Windows` збирає `QuizForge-Client.exe` і `QuizForge-Admin.exe` у zip-архів. Запускається при створенні тегу `v*` (тоді ж публікується Release) або вручну: Actions → Portable Windows → Run workflow.
-
-Артефакти з’являються в розділі Actions → Build Portable.
-
-## Перший запуск
-
-Детальна інструкція: [FIRST_RUN.md](FIRST_RUN.md)
-
-## Що ще варто додати в Git
-
-- [ ] `docs/` — розширена документація (скріншоти, FAQ)
-- [ ] `assets/icon.ico` — іконка для exe (Windows)
-- [ ] Приклад Excel-шаблону тестів у `docs/`
-- [ ] CI для тестів (окремий workflow `tests.yml`)
-- [ ] `.github/ISSUE_TEMPLATE/` та `PULL_REQUEST_TEMPLATE.md`
-- [ ] Badges у README (build status, license)
-- [ ] `CHANGELOG.md`
-
-
-## Тема оформлення
-
-Є темна та світла тема. Перемикач «☀ Світла / ☾ Темна» — у верхній панелі адмінки та в куті екранів входу, згоди й завершення та у верхній панелі під час тесту. Вибір зберігається у `ui_prefs.json` поруч із програмою. Тема за замовчуванням для нових користувачів задається в `config.json`: `organization.theme` = `"dark"` або `"light"`.
+MIT — див. [LICENSE](LICENSE)
