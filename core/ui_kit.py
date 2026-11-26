@@ -2,15 +2,104 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, QSize, QTimer, QPoint
-from PyQt6.QtGui import QFontMetrics, QCursor
+from PyQt6.QtCore import Qt, QSize, QTimer, QPoint, QRect, QSizePolicy
+from PyQt6.QtGui import QFontMetrics
 from PyQt6.QtWidgets import (
     QFrame, QPushButton, QGridLayout, QHBoxLayout, QLabel, QSizePolicy,
-    QVBoxLayout, QWidget, QToolTip,
+    QVBoxLayout, QWidget, QToolTip, QLayout, QLayoutItem,
 )
 
 from core import ui_theme
 from core.ui_theme import logo_pixmap
+
+
+class FlowLayout(QLayout):
+    """Layout що переносить елементи на наступний рядок при нестачі місця."""
+
+    def __init__(self, parent=None, margin=0, spacing=8):
+        super().__init__(parent)
+        self._items = []
+        self._spacing = spacing
+        self.setContentsMargins(margin, margin, margin, margin)
+
+    def addItem(self, item):
+        self._items.append(item)
+
+    def count(self):
+        return len(self._items)
+
+    def itemAt(self, index):
+        if 0 <= index < len(self._items):
+            return self._items[index]
+        return None
+
+    def takeAt(self, index):
+        if 0 <= index < len(self._items):
+            return self._items.pop(index)
+        return None
+
+    def expandingDirections(self):
+        return Qt.Orientation(0)
+
+    def hasHeightForWidth(self):
+        return True
+
+    def heightForWidth(self, width):
+        return self._do_layout(QRect(0, 0, width, 0), True)
+
+    def setGeometry(self, rect):
+        super().setGeometry(rect)
+        self._do_layout(rect, False)
+
+    def sizeHint(self):
+        return self.minimumSize()
+
+    def minimumSize(self):
+        size = QSize()
+        for item in self._items:
+            size = size.expandedTo(item.minimumSize())
+        m = self.contentsMargins()
+        size += QSize(m.left() + m.right(), m.top() + m.bottom())
+        return size
+
+    def _do_layout(self, rect, test_only):
+        x = rect.x()
+        y = rect.y()
+        line_height = 0
+        m = self.contentsMargins()
+        effective_rect = rect.adjusted(m.left(), m.top(), -m.right(), -m.bottom())
+        x = effective_rect.x()
+        y = effective_rect.y()
+
+        for item in self._items:
+            wid = item.widget()
+            if not wid or not wid.isVisible():
+                continue
+            space_x = self._spacing
+            space_y = self._spacing
+            next_x = x + item.sizeHint().width() + space_x
+            if next_x - space_x > effective_rect.right() and line_height > 0:
+                x = effective_rect.x()
+                y = y + line_height + space_y
+                next_x = x + item.sizeHint().width() + space_x
+                line_height = 0
+            if not test_only:
+                item.setGeometry(QRect(QPoint(x, y), item.sizeHint()))
+            x = next_x
+            line_height = max(line_height, item.sizeHint().height())
+
+        return y + line_height - rect.y() + m.bottom()
+
+
+def button_row(*buttons, spacing=8) -> QWidget:
+    """Гнучкий рядок кнопок що переноситься на наступний рядок."""
+    container = QWidget()
+    flow = FlowLayout(container, margin=0, spacing=spacing)
+    for btn in buttons:
+        flow.addWidget(btn)
+    container.setLayout(flow)
+    container.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+    return container
 
 
 class ThemedLogo(QLabel):
@@ -38,11 +127,10 @@ class ThemeToggle(QPushButton):
         self._sync()
 
     def _sync(self, *_args):
-        self.setText("☀ Світла" if ui_theme.current_theme() == "dark" else "☾ Темна")
+        self.setText("☀" if ui_theme.current_theme() == "dark" else "☾")
 
 
 def brand_row(logo: str = "logo-client.svg", size: int = 40, centered: bool = True) -> QWidget:
-    """Логотип + назва QuizForge."""
     w = QWidget()
     row = QHBoxLayout(w)
     row.setContentsMargins(0, 0, 0, 0)
@@ -59,7 +147,6 @@ def brand_row(logo: str = "logo-client.svg", size: int = 40, centered: bool = Tr
 
 
 def centered_card(screen: QWidget, max_width: int = 520, min_width: int = 300):
-    """Центрована картка. Повертає (card, card_layout)."""
     grid = QGridLayout(screen)
     grid.setContentsMargins(24, 24, 24, 24)
     grid.setRowStretch(0, 1)
@@ -103,32 +190,6 @@ def align_center(label: QLabel) -> QLabel:
     label.setAlignment(Qt.AlignmentFlag.AlignCenter)
     label.setWordWrap(True)
     return label
-
-
-class AdaptiveButton(QPushButton):
-    def __init__(self, text: str, short: str = None, parent=None):
-        super().__init__(text, parent)
-        self._full_text = text
-        self._short_text = short or text[:6]
-        self._min_font = 8
-        self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        available = self.width() - 16
-        if available <= 0:
-            return
-        font = self.font()
-        for size in range(font.pointSize() or 12, self._min_font - 1, -1):
-            font.setPointSize(size)
-            fm = QFontMetrics(font)
-            if fm.horizontalAdvance(self._full_text) <= available:
-                self.setFont(font)
-                self.setText(self._full_text)
-                return
-        font.setPointSize(self._min_font)
-        self.setFont(font)
-        self.setText(self._short_text)
 
 
 class DelayedTooltipButton(QPushButton):
@@ -183,6 +244,7 @@ def icon_button(
     btn.setIconSize(QSize(size, size))
     btn.setFixedSize(size + 16, size + 16)
     btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
     if danger:
         btn.setProperty("danger", True)
     if accent:
