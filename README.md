@@ -1,8 +1,9 @@
-# QuizForge
+# QuizForge v0.9.7
 
 [![Build](https://github.com/Mishuig/QuizForge-v0.9.7/actions/workflows/portable-windows.yml/badge.svg)](https://github.com/Mishuig/QuizForge-v0.9.7/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Version](https://img.shields.io/badge/version-0.9.7-orange.svg)](VERSION)
 
 Повністю десктопний застосунок для Windows 10/11 для захищеного тестування з елементами прокторингу.
 
@@ -11,7 +12,7 @@
 - Автентифікація через OTP (email)
 - Прокторинг: блокування Alt+Tab, скріншоти
 - Темна/світла тема з перемикачем
-- Адаптивний інтерфейс
+- Адаптивний інтерфейс з іконками
 - Імпорт тестів з Excel
 - Генерація звітів PDF
 
@@ -37,9 +38,9 @@ python -m client.main   # клієнт тестування
 
 ```
 QuizForge/
-├── admin/           # Адмін-панель
-├── client/          # Клієнт тестування
-├── core/            # Спільна логіка
+├── admin/           # Адмін-панель (тести, користувачі, результати)
+├── client/          # Клієнт тестування (прокторинг)
+├── core/            # Спільна логіка (БД, OTP, теми, іконки)
 ├── assets/          # Логотипи, іконки
 ├── tests/           # Unit тести
 ├── fonts/           # Шрифти
