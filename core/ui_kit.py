@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, QSize, QTimer, QPoint, QRect, QSizePolicy
+from PyQt6.QtCore import Qt, QSize, QTimer, QPoint, QRect
 from PyQt6.QtGui import QFontMetrics
 from PyQt6.QtWidgets import (
     QFrame, QPushButton, QGridLayout, QHBoxLayout, QLabel, QSizePolicy,
-    QVBoxLayout, QWidget, QToolTip, QLayout, QLayoutItem,
+    QVBoxLayout, QWidget, QToolTip, QLayout,
 )
 
 from core import ui_theme
