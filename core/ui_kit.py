@@ -40,6 +40,45 @@ class ThemeToggle(QPushButton):
         self.setText("☀ Світла" if ui_theme.current_theme() == "dark" else "☾ Темна")
 
 
+def brand_row(logo: str = "logo-client.svg", size: int = 40, centered: bool = True) -> QWidget:
+    """Логотип + назва QuizForge."""
+    w = QWidget()
+    row = QHBoxLayout(w)
+    row.setContentsMargins(0, 0, 0, 0)
+    row.setSpacing(12)
+    if centered:
+        row.addStretch(1)
+    icon = ThemedLogo(logo, size)
+    name = QLabel("QuizForge")
+    name.setObjectName("logoLabel")
+    row.addWidget(icon)
+    row.addWidget(name)
+    row.addStretch(1)
+    return w
+
+
+def centered_card(screen: QWidget, max_width: int = 520, min_width: int = 300):
+    """Центрована картка. Повертає (card, card_layout)."""
+    grid = QGridLayout(screen)
+    grid.setContentsMargins(24, 24, 24, 24)
+    grid.setRowStretch(0, 1)
+    grid.setRowStretch(2, 1)
+    grid.setColumnStretch(0, 1)
+    grid.setColumnStretch(1, 1000)
+    grid.setColumnStretch(2, 1)
+    card = QFrame()
+    card.setObjectName("card")
+    card.setMinimumWidth(min_width)
+    card.setMaximumWidth(max_width)
+    card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+    lay = QVBoxLayout(card)
+    lay.setContentsMargins(36, 32, 36, 32)
+    lay.setSpacing(16)
+    grid.addWidget(card, 1, 1)
+    grid.addWidget(ThemeToggle(), 0, 2, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
+    return card, lay
+
+
 def field(label: str, widget: QWidget) -> QWidget:
     box = QWidget()
     lay = QVBoxLayout(box)
