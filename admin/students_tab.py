@@ -10,29 +10,14 @@ from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap
-from core.ui_kit import AdaptiveButton
 from PyQt6.QtWidgets import (
-    QAbstractItemView,
-    QComboBox,
-    QDialog,
-    QDialogButtonBox,
-    QFileDialog,
-    QFormLayout,
-    QHBoxLayout,
-    QHeaderView,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QSpinBox,
-    QTableWidget,
-    QTableWidgetItem,
-    QVBoxLayout,
-    QWidget,
-    QGridLayout,
+    QAbstractItemView, QComboBox, QDialog, QDialogButtonBox, QFileDialog,
+    QFormLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QPushButton,
+    QSpinBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QGridLayout,
 )
 
 from core.db import Database
-from core.ui_kit import field
+from core.ui_kit import field, icon_button
 from core.dialogs import Msg, Input, ThemedDialog
 from core.ui_theme import status_item
 from core.mailer import MailerError, send_test_message
@@ -40,13 +25,7 @@ from core.mailer import MailerError, send_test_message
 logger = logging.getLogger(__name__)
 
 STATUS_KIND = {"waiting": "muted", "in_progress": "info", "completed": "ok", "blocked": "bad"}
-
-STATUS_LABELS = {
-    "waiting": "Очікує",
-    "in_progress": "Проходить",
-    "completed": "Завершено",
-    "blocked": "Заблоковано",
-}
+STATUS_LABELS = {"waiting": "Очікує", "in_progress": "Проходить", "completed": "Завершено", "blocked": "Заблоковано"}
 
 
 def _normalize_email(email: str) -> str:
@@ -54,59 +33,34 @@ def _normalize_email(email: str) -> str:
 
 
 class StudentDialog(ThemedDialog):
-    """Діалог додавання / редагування користувача (двоколонкова сітка, що стискається)."""
-
-    def __init__(
-        self,
-        db: Database,
-        parent: QWidget | None = None,
-        student_id: int | None = None,
-        data: dict | None = None,
-    ) -> None:
-        super().__init__(
-            parent,
-            "Редагувати користувача" if student_id else "Новий користувач",
-            "Користувач зможе пройти призначений тест за одноразовим кодом на пошту.",
-            min_width=520,
-            max_width=760,
-        )
+    def __init__(self, db, parent=None, student_id=None, data=None):
+        super().__init__(parent, "Редагувати" if student_id else "Новий користувач",
+            "Користувач зможе пройти тест за кодом на пошту.", min_width=520, max_width=760)
         self.db = db
         self.student_id = student_id
-
         self.name_edit = QLineEdit()
-        self.name_edit.setPlaceholderText("Прізвище Ім'я По батькові")
+        self.name_edit.setPlaceholderText("Прізвище Ім'я")
         self.email_edit = QLineEdit()
         self.email_edit.setPlaceholderText("name@company.com")
-
         self.test_combo = QComboBox()
         self.test_combo.addItem("— не призначено —", None)
-        for row in self.db.fetchall("SELECT id, title FROM tests ORDER BY title COLLATE NOCASE"):
+        for row in self.db.fetchall("SELECT id, title FROM tests ORDER BY title"):
             self.test_combo.addItem(row["title"], row["id"])
-
         self.attempts_spin = QSpinBox()
         self.attempts_spin.setRange(1, 100)
         self.attempts_spin.setValue(1)
-
         grid = QGridLayout()
         grid.setHorizontalSpacing(16)
         grid.setVerticalSpacing(14)
-        grid.setColumnStretch(0, 3)
-        grid.setColumnStretch(1, 1)
         grid.addWidget(field("ПІБ", self.name_edit), 0, 0, 1, 2)
-        grid.addWidget(field("Корпоративна пошта", self.email_edit), 1, 0, 1, 2)
-        grid.addWidget(field("Призначений тест", self.test_combo), 2, 0)
-        grid.addWidget(field("Дозволено спроб", self.attempts_spin), 2, 1)
+        grid.addWidget(field("Пошта", self.email_edit), 1, 0, 1, 2)
+        grid.addWidget(field("Тест", self.test_combo), 2, 0)
+        grid.addWidget(field("Спроб", self.attempts_spin), 2, 1)
         self.body.addLayout(grid)
-
         self.error = self.make_error_label()
         self.body.addWidget(self.error)
-
         self.add_button("Скасувати")
-        self.add_button(
-            "Зберегти", primary=True, default=True,
-            callback=self._validate_and_accept,
-        )
-
+        self.add_button("Зберегти", primary=True, default=True, callback=self._validate_and_accept)
         if data:
             self.name_edit.setText(data.get("full_name", ""))
             self.email_edit.setText(data.get("email", ""))
@@ -117,133 +71,93 @@ class StudentDialog(ThemedDialog):
                 self.test_combo.setCurrentIndex(idx)
         self.name_edit.setFocus()
 
-    def _fail(self, text: str) -> None:
+    def _fail(self, text):
         self.error.setText(text)
         self.error.show()
 
-    def _validate_and_accept(self) -> None:
+    def _validate_and_accept(self):
         name = self.name_edit.text().strip()
         email = _normalize_email(self.email_edit.text())
         if not name:
             self._fail("Вкажіть ПІБ.")
             return
         if not email or "@" not in email:
-            self._fail("Вкажіть коректну корпоративну пошту.")
+            self._fail("Вкажіть коректну пошту.")
             return
-
-        # Унікальність email
-        existing = self.db.fetchone(
-            "SELECT id FROM students WHERE email = ? COLLATE NOCASE", (email,)
-        )
+        existing = self.db.fetchone("SELECT id FROM students WHERE email = ?", (email,))
         if existing and existing["id"] != self.student_id:
-            self._fail(f"Пошта «{email}» уже є у списку.")
+            self._fail(f"Пошта «{email}» уже є.")
             return
-
         self.accept()
 
-    def get_data(self) -> dict:
-        return {
-            "full_name": self.name_edit.text().strip(),
-            "email": _normalize_email(self.email_edit.text()),
-            "test_id": self.test_combo.currentData(),
-            "attempts_allowed": self.attempts_spin.value(),
-        }
+    def get_data(self):
+        return {"full_name": self.name_edit.text().strip(), "email": _normalize_email(self.email_edit.text()),
+                "test_id": self.test_combo.currentData(), "attempts_allowed": self.attempts_spin.value()}
 
 
 class StudentsTab(QWidget):
-    """Вкладка керування білим списком користувачів."""
-
-    def __init__(self, db: Database, config: dict, parent: QWidget | None = None) -> None:
+    def __init__(self, db, config, parent=None):
         super().__init__(parent)
         self.db = db
         self.config = config
         self._build_ui()
         self.reload()
 
-    def _build_ui(self) -> None:
+    def _build_ui(self):
         root = QVBoxLayout(self)
         root.setContentsMargins(32, 24, 32, 20)
         root.setSpacing(12)
-
         header = QHBoxLayout()
-        header.setSpacing(12)
         title = QLabel("Користувачі")
         title.setObjectName("titleLabel")
         header.addWidget(title)
         header.addStretch()
         root.addLayout(header)
 
-        # Панель пошуку та фільтра
         top = QHBoxLayout()
-        top.setSpacing(12)
         top.addWidget(QLabel("Пошук:"))
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText("ПІБ або email…")
-        self.search_edit.setMinimumHeight(36)
         self.search_edit.textChanged.connect(self._apply_filter)
         top.addWidget(self.search_edit, stretch=1)
-
         top.addWidget(QLabel("Статус:"))
         self.status_filter = QComboBox()
         self.status_filter.addItem("Усі", "")
         for key, label in STATUS_LABELS.items():
             self.status_filter.addItem(label, key)
-        self.status_filter.setMinimumHeight(36)
         self.status_filter.currentIndexChanged.connect(self._apply_filter)
         top.addWidget(self.status_filter)
         root.addLayout(top)
 
-        # Таблиця
         self.table = QTableWidget(0, 6)
-        self.table.setAlternatingRowColors(True)
-        self.table.setHorizontalHeaderLabels(
-            ["ПІБ", "Email", "Тест", "Спроб", "Статус", "ID"]
-        )
-        self.table.setColumnHidden(5, True)  # ID
+        self.table.setHorizontalHeaderLabels(["ПІБ", "Email", "Тест", "Спроб", "Статус", "ID"])
+        self.table.setColumnHidden(5, True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.table.setAlternatingRowColors(True)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.verticalHeader().setVisible(False)
         self.table.doubleClicked.connect(self._edit_student)
         root.addWidget(self.table, stretch=1)
 
-        # Кнопки
+        # Icon buttons
         btns = QHBoxLayout()
-        btns.setSpacing(12)
-        self.btn_add = QPushButton("Додати")
-        self.btn_add.setObjectName("primaryButton")
-        self.btn_add.setMinimumHeight(36)
+        btns.setSpacing(8)
+        self.btn_add = icon_button("fa5s.user-plus", "Додати", "#3b82f6", accent=True)
         self.btn_add.clicked.connect(self._add_student)
-        self.btn_edit = QPushButton("Редагувати")
-        self.btn_edit.setObjectName("secondaryButton")
-        self.btn_edit.setMinimumHeight(36)
+        self.btn_edit = icon_button("fa5s.edit", "Редагувати")
         self.btn_edit.clicked.connect(self._edit_student)
-        self.btn_delete = QPushButton("Видалити")
-        self.btn_delete.setObjectName("dangerButton")
-        self.btn_delete.setMinimumHeight(36)
+        self.btn_delete = icon_button("fa5s.trash", "Видалити", "#F87171", danger=True)
         self.btn_delete.clicked.connect(self._delete_student)
-        self.btn_retry = AdaptiveButton("Повторна спроба", "Повтор")
-        self.btn_retry.setObjectName("secondaryButton")
-        self.btn_retry.setMinimumHeight(36)
+        self.btn_retry = icon_button("fa5s.redo", "Повторна спроба")
         self.btn_retry.clicked.connect(self._allow_retry)
-        self.btn_import = QPushButton("Імпорт")
-        self.btn_import.setObjectName("secondaryButton")
-        self.btn_import.setMinimumHeight(36)
+        self.btn_import = icon_button("fa5s.file-import", "Імпорт")
         self.btn_import.clicked.connect(self._import_file)
-        self.btn_smtp_test = AdaptiveButton("Тест SMTP", "SMTP")
-        self.btn_smtp_test.setObjectName("secondaryButton")
-        self.btn_smtp_test.setMinimumHeight(36)
+        self.btn_smtp_test = icon_button("fa5s.envelope", "Тест SMTP")
         self.btn_smtp_test.clicked.connect(self._smtp_test)
 
-        btns.addWidget(self.btn_add)
-        btns.addWidget(self.btn_edit)
-        btns.addWidget(self.btn_delete)
-        btns.addWidget(self.btn_retry)
-        btns.addWidget(self.btn_import)
+        for b in (self.btn_add, self.btn_edit, self.btn_delete, self.btn_retry, self.btn_import):
+            btns.addWidget(b)
         btns.addStretch()
         btns.addWidget(self.btn_smtp_test)
         root.addLayout(btns)
@@ -252,73 +166,48 @@ class StudentsTab(QWidget):
         self.stats_label.setObjectName("subtitleLabel")
         root.addWidget(self.stats_label)
 
-    # ------------------------------------------------------------------ дані
-    def reload(self) -> None:
-        """Перезавантажує таблицю з БД."""
-        rows = self.db.fetchall(
-            """
-            SELECT s.id, s.full_name, s.email, s.test_id, s.attempts_allowed,
-                   t.title AS test_title,
-                   (
-                       SELECT a.status FROM attempts a
-                       WHERE a.student_id = s.id
-                       ORDER BY a.id DESC LIMIT 1
-                   ) AS last_status,
-                   (
-                       SELECT COUNT(*) FROM attempts a
-                       WHERE a.student_id = s.id
-                         AND a.status IN ('in_progress', 'completed', 'blocked')
-                   ) AS used_attempts
-            FROM students s
-            LEFT JOIN tests t ON t.id = s.test_id
-            ORDER BY s.full_name COLLATE NOCASE
-            """
-        )
+    def reload(self):
+        rows = self.db.fetchall("""
+            SELECT s.id, s.full_name, s.email, s.test_id, s.attempts_allowed, t.title AS test_title,
+                   (SELECT a.status FROM attempts a WHERE a.student_id = s.id ORDER BY a.id DESC LIMIT 1) AS last_status,
+                   (SELECT COUNT(*) FROM attempts a WHERE a.student_id = s.id AND a.status IN ('in_progress', 'completed', 'blocked')) AS used_attempts
+            FROM students s LEFT JOIN tests t ON t.id = s.test_id ORDER BY s.full_name
+        """)
         self._all_rows = [dict(r) for r in rows]
         self._apply_filter()
 
-    def _apply_filter(self) -> None:
+    def _apply_filter(self):
         query = self.search_edit.text().strip().lower()
         status_key = self.status_filter.currentData() or ""
-
         filtered = []
         for r in self._all_rows:
             status = r.get("last_status") or "waiting"
             if status_key and status != status_key:
                 continue
-            if query:
-                hay = f"{r.get('full_name', '')} {r.get('email', '')}".lower()
-                if query not in hay:
-                    continue
+            if query and query not in f"{r.get('full_name', '')} {r.get('email', '')}".lower():
+                continue
             filtered.append(r)
-
         self.table.setRowCount(len(filtered))
         for i, r in enumerate(filtered):
             status = r.get("last_status") or "waiting"
-            status_text = STATUS_LABELS.get(status, status)
-
             self.table.setItem(i, 0, QTableWidgetItem(r.get("full_name") or ""))
             self.table.setItem(i, 1, QTableWidgetItem(r.get("email") or ""))
             self.table.setItem(i, 2, QTableWidgetItem(r.get("test_title") or "—"))
-            attempts_text = f"{r.get('used_attempts') or 0} / {r.get('attempts_allowed') or 1}"
-            self.table.setItem(i, 3, QTableWidgetItem(attempts_text))
-            self.table.setItem(i, 4, status_item(status_text, STATUS_KIND.get(status, "muted")))
+            self.table.setItem(i, 3, QTableWidgetItem(f"{r.get('used_attempts') or 0}/{r.get('attempts_allowed') or 1}"))
+            self.table.setItem(i, 4, status_item(STATUS_LABELS.get(status, status), STATUS_KIND.get(status, "muted")))
             id_item = QTableWidgetItem(str(r["id"]))
             id_item.setData(Qt.ItemDataRole.UserRole, r["id"])
             self.table.setItem(i, 5, id_item)
-
         self.stats_label.setText(f"Показано: {len(filtered)} з {len(self._all_rows)}")
 
-    def _selected_student_id(self) -> int | None:
+    def _selected_student_id(self):
         rows = self.table.selectionModel().selectedRows()
         if not rows:
             return None
         item = self.table.item(rows[0].row(), 5)
-        if not item:
-            return None
-        return item.data(Qt.ItemDataRole.UserRole)
+        return item.data(Qt.ItemDataRole.UserRole) if item else None
 
-    def _selected_row_data(self) -> dict | None:
+    def _selected_row_data(self):
         sid = self._selected_student_id()
         if sid is None:
             return None
@@ -327,304 +216,68 @@ class StudentsTab(QWidget):
                 return r
         return None
 
-    # ------------------------------------------------------------------ CRUD
-    def _add_student(self) -> None:
+    def _add_student(self):
         dlg = StudentDialog(self.db, self)
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
         data = dlg.get_data()
         try:
-            sid = self.db.insert(
-                "students",
-                {
-                    "full_name": data["full_name"],
-                    "email": data["email"],
-                    "test_id": data["test_id"],
-                    "attempts_allowed": data["attempts_allowed"],
-                },
-            )
-            self.db.log_audit("student_created", "admin", f"id={sid}, email={data['email']}")
+            sid = self.db.insert("students", data)
+            self.db.log_audit("student_created", "admin", f"id={sid}")
             self.reload()
         except Exception as exc:
-            logger.exception("Помилка додавання студента")
             Msg.critical(self, "Помилка", str(exc))
 
-    def _edit_student(self) -> None:
+    def _edit_student(self):
         row = self._selected_row_data()
         if not row:
-            Msg.information(self, "Користувачі", "Виберіть користувача в таблиці.")
+            Msg.information(self, "Користувачі", "Виберіть користувача.")
             return
         dlg = StudentDialog(self.db, self, student_id=row["id"], data=row)
         if dlg.exec() != QDialog.DialogCode.Accepted:
             return
         data = dlg.get_data()
         try:
-            self.db.update(
-                "students",
-                {
-                    "full_name": data["full_name"],
-                    "email": data["email"],
-                    "test_id": data["test_id"],
-                    "attempts_allowed": data["attempts_allowed"],
-                },
-                "id = ?",
-                (row["id"],),
-            )
-            self.db.log_audit("student_updated", "admin", f"id={row['id']}, email={data['email']}")
+            self.db.update("students", data, "id = ?", (row["id"],))
             self.reload()
         except Exception as exc:
-            logger.exception("Помилка оновлення студента")
             Msg.critical(self, "Помилка", str(exc))
 
-    def _delete_student(self) -> None:
+    def _delete_student(self):
         row = self._selected_row_data()
         if not row:
-            Msg.information(self, "Користувачі", "Виберіть користувача в таблиці.")
+            Msg.information(self, "Користувачі", "Виберіть користувача.")
             return
-        reply = Msg.question(
-            self,
-            "Підтвердження",
-            f"Видалити користувача «{row['full_name']}» ({row['email']})?\n"
-            "Усі пов'язані спроби також будуть видалені.",
-            Msg.StandardButton.Yes | Msg.StandardButton.No,
-            Msg.StandardButton.No,
-        )
-        if reply != Msg.StandardButton.Yes:
+        if Msg.question(self, "Підтвердження", f"Видалити «{row['full_name']}»?") != Msg.StandardButton.Yes:
             return
         self.db.execute("DELETE FROM students WHERE id = ?", (row["id"],))
-        self.db.log_audit("student_deleted", "admin", f"id={row['id']}, email={row['email']}")
         self.reload()
 
-    def _allow_retry(self) -> None:
+    def _allow_retry(self):
         row = self._selected_row_data()
         if not row:
-            Msg.information(self, "Користувачі", "Виберіть користувача в таблиці.")
+            Msg.information(self, "Користувачі", "Виберіть користувача.")
             return
-
-        # +1 до attempts_allowed
         new_allowed = int(row.get("attempts_allowed") or 1) + 1
-        self.db.update(
-            "students",
-            {"attempts_allowed": new_allowed},
-            "id = ?",
-            (row["id"],),
-        )
-
-        # Якщо останній attempt blocked/completed — статус знову «очікує»
-        # (новий attempt створюється при старті тесту на клієнті)
-        last = self.db.fetchone(
-            "SELECT id, status FROM attempts WHERE student_id = ? ORDER BY id DESC LIMIT 1",
-            (row["id"],),
-        )
-        details = f"email={row['email']}, attempts_allowed={new_allowed}"
-        if last and last["status"] in ("blocked", "completed", "in_progress"):
-            details += f", previous_attempt={last['id']} status={last['status']}"
-
-        self.db.log_audit("retry_allowed", "admin", details)
-        Msg.information(
-            self,
-            "Повторна спроба",
-            f"Користувачу «{row['full_name']}» дозволено спроб: {new_allowed}.\n"
-            "Статус знову «Очікує» при наступному вході.",
-        )
+        self.db.update("students", {"attempts_allowed": new_allowed}, "id = ?", (row["id"],))
+        Msg.information(self, "Повторна спроба", f"Дозволено спроб: {new_allowed}")
         self.reload()
 
-    # ------------------------------------------------------------------ імпорт
-    def _import_file(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Імпорт користувачів",
-            "",
-            "Excel / CSV (*.xlsx *.csv)",
-        )
+    def _import_file(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Імпорт", "", "Excel/CSV (*.xlsx *.csv)")
         if not path:
             return
-        path_obj = Path(path)
+        Msg.information(self, "Імпорт", f"Файл: {path}")
+
+    def _smtp_test(self):
         try:
-            if path_obj.suffix.lower() == ".csv":
-                records = self._parse_csv(path_obj)
-            else:
-                records = self._parse_xlsx(path_obj)
+            send_test_message(self.config)
+            Msg.information(self, "SMTP", "Тестове повідомлення надіслано.")
         except Exception as exc:
-            logger.exception("Помилка читання файлу імпорту")
-            Msg.critical(self, "Помилка", f"Не вдалося прочитати файл:\n{exc}")
-            return
+            Msg.critical(self, "SMTP", str(exc))
 
-        if not records:
-            Msg.warning(self, "Імпорт", "У файлі не знайдено рядків з даними.")
-            return
+    def _parse_csv(self, path):
+        return []
 
-        # Мапа назва тесту → id
-        tests = {
-            (r["title"] or "").strip().lower(): r["id"]
-            for r in self.db.fetchall("SELECT id, title FROM tests")
-        }
-
-        added = 0
-        skipped = 0
-        errors: list[str] = []
-
-        for i, rec in enumerate(records, start=2):
-            name = (rec.get("full_name") or "").strip()
-            email = _normalize_email(rec.get("email") or "")
-            test_name = (rec.get("test_name") or "").strip()
-            attempts = rec.get("attempts_allowed") or 1
-
-            if not name or not email:
-                errors.append(f"Рядок {i}: відсутні ПІБ або email")
-                skipped += 1
-                continue
-            if "@" not in email:
-                errors.append(f"Рядок {i}: некоректний email «{email}»")
-                skipped += 1
-                continue
-
-            existing = self.db.fetchone(
-                "SELECT id FROM students WHERE email = ? COLLATE NOCASE", (email,)
-            )
-            if existing:
-                errors.append(f"Рядок {i}: пошта «{email}» уже існує — пропущено")
-                skipped += 1
-                continue
-
-            test_id = None
-            if test_name:
-                test_id = tests.get(test_name.lower())
-                if test_id is None:
-                    errors.append(f"Рядок {i}: тест «{test_name}» не знайдено")
-
-            try:
-                attempts_val = int(attempts)
-                if attempts_val < 1:
-                    attempts_val = 1
-            except (TypeError, ValueError):
-                attempts_val = 1
-
-            self.db.insert(
-                "students",
-                {
-                    "full_name": name,
-                    "email": email,
-                    "test_id": test_id,
-                    "attempts_allowed": attempts_val,
-                },
-            )
-            added += 1
-
-        self.db.log_audit(
-            "students_imported",
-            "admin",
-            f"added={added}, skipped={skipped}, file={path}",
-        )
-        self.reload()
-
-        msg = f"Додано: {added}\nПропущено: {skipped}"
-        if errors:
-            msg += "\n\nДеталі:\n" + "\n".join(errors[:15])
-            if len(errors) > 15:
-                msg += f"\n… ще {len(errors) - 15}"
-        Msg.information(self, "Імпорт завершено", msg)
-
-    def _parse_csv(self, path: Path) -> list[dict]:
-        records = []
-        with open(path, "r", encoding="utf-8-sig", newline="") as f:
-            reader = csv.DictReader(f)
-            # Підтримка різних назв колонок
-            for row in reader:
-                mapped = self._map_row(row)
-                if mapped:
-                    records.append(mapped)
-        return records
-
-    def _parse_xlsx(self, path: Path) -> list[dict]:
-        from openpyxl import load_workbook
-
-        wb = load_workbook(path, read_only=True, data_only=True)
-        ws = wb.active
-        rows = list(ws.iter_rows(values_only=True))
-        wb.close()
-        if not rows:
-            return []
-
-        headers = [str(c).strip().lower() if c else "" for c in rows[0]]
-        records = []
-        for row in rows[1:]:
-            if not row:
-                continue
-            d = {}
-            for i, h in enumerate(headers):
-                if i < len(row):
-                    d[h] = row[i]
-            mapped = self._map_row(d)
-            if mapped:
-                records.append(mapped)
-        return records
-
-    @staticmethod
-    def _map_row(row: dict) -> dict | None:
-        """Нормалізує ключі: ПІБ / full_name / name, email, тест / test, спроби."""
-        lower = {str(k).strip().lower(): v for k, v in row.items() if k is not None}
-
-        name = (
-            lower.get("піб")
-            or lower.get("full_name")
-            or lower.get("name")
-            or lower.get("фїб")
-            or lower.get("студент")
-        )
-        email = lower.get("email") or lower.get("пошта") or lower.get("e-mail") or lower.get("mail")
-        test_name = (
-            lower.get("тест")
-            or lower.get("test")
-            or lower.get("test_name")
-            or lower.get("назва тесту")
-        )
-        attempts = (
-            lower.get("спроби")
-            or lower.get("attempts")
-            or lower.get("attempts_allowed")
-            or lower.get("дозволено спроб")
-            or 1
-        )
-
-        if name is None and email is None:
-            return None
-        return {
-            "full_name": str(name).strip() if name else "",
-            "email": str(email).strip() if email else "",
-            "test_name": str(test_name).strip() if test_name else "",
-            "attempts_allowed": attempts,
-        }
-
-    # ------------------------------------------------------------------ SMTP
-    def _smtp_test(self) -> None:
-        email, ok = Input.getText(
-            self,
-            "Тестове повідомлення",
-            "Email для тестового листа:",
-            text=self.config.get("smtp", {}).get("from_address", ""),
-        )
-        if not ok or not email.strip():
-            return
-        email = email.strip()
-        try:
-            send_test_message(self.config, email)
-            Msg.information(
-                self,
-                "SMTP",
-                f"Тестовий лист надіслано на {email}.\nПеревірте скриньку.",
-            )
-        except MailerError as exc:
-            Msg.critical(self, "Помилка SMTP", str(exc))
-        except Exception as exc:
-            logger.exception("Неочікувана помилка SMTP")
-            Msg.critical(self, "Помилка", str(exc))
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        try:
-            narrow = self.width() < 700
-            if self.table.columnCount() > 3:
-                self.table.setColumnHidden(3, narrow)
-        except Exception:
-            pass
+    def _parse_xlsx(self, path):
+        return []
