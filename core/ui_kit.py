@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, QSize, QTimer, QPoint, QRect, QEvent
-from PyQt6.QtGui import QFontMetrics
+from PyQt6.QtCore import Qt, QSize, QTimer, QPoint, QRect
+from PyQt6.QtGui import QFontMetrics, QFont
 from PyQt6.QtWidgets import (
     QFrame, QPushButton, QGridLayout, QHBoxLayout, QLabel, QSizePolicy,
     QVBoxLayout, QWidget, QToolTip, QLayout,
@@ -11,6 +11,52 @@ from PyQt6.QtWidgets import (
 
 from core import ui_theme
 from core.ui_theme import logo_pixmap
+
+
+class AdaptiveLabel(QLabel):
+    """Лейбл що зменшує шрифт і скорочує текст при нестачі місця."""
+
+    def __init__(self, text: str = "", parent=None, min_font: int = 8, max_font: int = 14):
+        super().__init__(parent)
+        self._full_text = text
+        self._min_font = min_font
+        self._max_font = max_font
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self._update_text()
+
+    def setFullText(self, text: str):
+        self._full_text = text
+        self._update_text()
+
+    def fullText(self) -> str:
+        return self._full_text
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_text()
+
+    def _update_text(self):
+        if not self._full_text:
+            super().setText("")
+            return
+        available = self.width() - 4
+        if available <= 0:
+            return
+        font = self.font()
+        for size in range(self._max_font, self._min_font - 1, -1):
+            font.setPointSize(size)
+            fm = QFontMetrics(font)
+            if fm.horizontalAdvance(self._full_text) <= available:
+                self.setFont(font)
+                super().setText(self._full_text)
+                return
+        font.setPointSize(self._min_font)
+        self.setFont(font)
+        fm = QFontMetrics(font)
+        elided = fm.elidedText(self._full_text, Qt.TextElideMode.ElideRight, available)
+        super().setText(elided)
+        if elided != self._full_text:
+            self.setToolTip(self._full_text)
 
 
 class FlowLayout(QLayout):
@@ -138,7 +184,7 @@ def brand_row(logo: str = "logo-client.svg", size: int = 40, centered: bool = Tr
     if centered:
         row.addStretch(1)
     icon = ThemedLogo(logo, size)
-    name = QLabel("QuizForge")
+    name = AdaptiveLabel("QuizForge", max_font=16, min_font=10)
     name.setObjectName("logoLabel")
     row.addWidget(icon)
     row.addWidget(name)
