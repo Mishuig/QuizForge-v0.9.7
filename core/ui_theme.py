@@ -156,9 +156,10 @@ def _render_qss(accent: str, theme: str) -> str:
 
 
 def apply_theme(app: QApplication, accent: str | None = None, default_theme: str = DEFAULT_THEME) -> None:
-    """Застосовує тему: збережений вибір користувача → default_theme → light."""
+    """Застосовує тему. За замовчуванням — світла. Збережений вибір ігнорується при старті."""
     accent = accent if accent and QColor(accent).isValid() else DEFAULT_ACCENT
-    theme = _load_pref() or (default_theme if default_theme in THEMES else DEFAULT_THEME)
+    # Завжди стартуємо зі світлої теми
+    theme = DEFAULT_THEME
     _state.update(app=app, accent=accent, theme=theme)
     _load_fonts(app)
     if not QSS_PATH.is_file():
