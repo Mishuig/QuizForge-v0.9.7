@@ -211,13 +211,52 @@ QListWidget::item { padding: 8px 10px; border-radius: 6px; }
 QListWidget::item:hover { background-color: @ROW_HOVER@; }
 QListWidget::item:selected { background-color: @SELECT@; }
 
-/* ---------- Скрол (тонкий) ---------- */
-QScrollBar:vertical { background: transparent; width: 8px; margin: 2px; }
-QScrollBar::handle:vertical { background: @BORDER3@; border-radius: 4px; min-height: 24px; }
-QScrollBar::handle:vertical:hover { background: @RING@; }
-QScrollBar:horizontal { background: transparent; height: 8px; margin: 2px; }
-QScrollBar::handle:horizontal { background: @BORDER3@; border-radius: 4px; min-width: 24px; }
-QScrollBar::add-line, QScrollBar::sub-line { width: 0; height: 0; }
+/* ---------- Скрол (консистентний) ---------- */
+QScrollBar:vertical {
+    background: transparent;
+    width: 10px;
+    margin: 0;
+    border: none;
+}
+QScrollBar::handle:vertical {
+    background: @BORDER2@;
+    border-radius: 5px;
+    min-height: 30px;
+    margin: 2px;
+}
+QScrollBar::handle:vertical:hover {
+    background: @MUTED@;
+}
+QScrollBar::handle:vertical:pressed {
+    background: @ACCENT@;
+}
+QScrollBar:horizontal {
+    background: transparent;
+    height: 10px;
+    margin: 0;
+    border: none;
+}
+QScrollBar::handle:horizontal {
+    background: @BORDER2@;
+    border-radius: 5px;
+    min-width: 30px;
+    margin: 2px;
+}
+QScrollBar::handle:horizontal:hover {
+    background: @MUTED@;
+}
+QScrollBar::handle:horizontal:pressed {
+    background: @ACCENT@;
+}
+QScrollBar::add-line, QScrollBar::sub-line {
+    width: 0;
+    height: 0;
+    border: none;
+    background: none;
+}
+QScrollBar::add-page, QScrollBar::sub-page {
+    background: none;
+}
 
 /* ---------- Навігація ---------- */
 QWidget#topbar { background-color: @INPUT@; border-bottom: 1px solid @BORDER@; min-height: 48px; }
