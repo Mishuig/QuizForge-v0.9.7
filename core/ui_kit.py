@@ -168,26 +168,28 @@ class ThemeToggle(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip("Перемкнути тему")
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.setFixedSize(40, 40)
-        # Іконка сонце+місяць
+        # Розмір як іконка (кругла)
+        self.setFixedSize(48, 48)
+        # Іконка сонце+місяць на весь розмір кнопки
         icon_path = ASSETS / "theme-toggle.png"
         if icon_path.exists():
             self.setIcon(QIcon(str(icon_path)))
-            self.setIconSize(QSize(24, 24))
+            self.setIconSize(QSize(44, 44))
         self.clicked.connect(lambda: ui_theme.toggle_theme())
         ui_theme.bus.changed.connect(self._sync)
         self._sync()
 
     def _sync(self, *_args):
-        # Кнопка протилежного кольору до теми
+        # Кнопка кругла, протилежного кольору до теми
         is_dark = ui_theme.current_theme() == "dark"
         if is_dark:
             # Темна тема → світла кнопка
             self.setStyleSheet("""
                 QPushButton#themeToggle {
                     background: #F1F5F9;
-                    border: 1px solid #CBD5E1;
-                    border-radius: 20px;
+                    border: 2px solid #CBD5E1;
+                    border-radius: 24px;
+                    padding: 2px;
                 }
                 QPushButton#themeToggle:hover {
                     background: #FFFFFF;
@@ -199,8 +201,9 @@ class ThemeToggle(QPushButton):
             self.setStyleSheet("""
                 QPushButton#themeToggle {
                     background: #1E293B;
-                    border: 1px solid #334155;
-                    border-radius: 20px;
+                    border: 2px solid #334155;
+                    border-radius: 24px;
+                    padding: 2px;
                 }
                 QPushButton#themeToggle:hover {
                     background: #0F172A;
