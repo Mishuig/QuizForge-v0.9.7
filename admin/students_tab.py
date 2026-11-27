@@ -28,9 +28,22 @@ logger = logging.getLogger(__name__)
 STATUS_KIND = {"waiting": "muted", "in_progress": "info", "completed": "ok", "blocked": "bad"}
 STATUS_LABELS = {"waiting": "Очікує", "in_progress": "Проходить", "completed": "Завершено", "blocked": "Заблоковано"}
 
+# Альтернативні назви колонок
+NAME_COLUMNS = {"name", "full_name", "ім'я", "піб", "прізвище", "фио", "фіо"}
+EMAIL_COLUMNS = {"email", "пошта", "електронна пошта", "e-mail", "mail"}
+
 
 def _normalize_email(email: str) -> str:
     return (email or "").strip().lower()
+
+
+def _extract_field(row: dict, candidates: set) -> str:
+    """Витягує значення з рядка за альтернативними назвами колонок."""
+    for key in row:
+        if key and key.lower().strip() in candidates:
+            val = row.get(key)
+            return str(val).strip() if val else ""
+    return ""
 
 
 class StudentDialog(ThemedDialog):
@@ -272,38 +285,76 @@ class StudentsTab(QWidget):
                 Msg.information(self, "Імпорт", "Файл порожній або не знайдено даних.")
                 return
             
-            # Оптимізація: завантажуємо всі існуючі email одним запитом
+            # Завантажуємо існуючі email
             existing_emails = set(
                 r["email"].lower() for r in self.db.fetchall("SELECT email FROM students")
             )
             
-            # Фільтруємо валідні записи
+            # Фільтруємо з детальним логом причин
             to_insert = []
-            skipped = 0
+            skipped_details = []
             seen_in_file = set()
             
-            for r in rows:
-                email = _normalize_email(r.get("email", ""))
-                name = (r.get("name") or r.get("full_name") or "").strip()
-                if not email or "@" not in email or not name:
-                    skipped += 1
+            for i, r in enumerate(rows, start=2):  # рядок 1 = заголовки
+                email = _normalize_email(_extract_field(r, EMAIL_COLUMNS))
+                name = _extract_field(r, NAME_COLUMNS)
+                
+                if not name:
+                    skipped_details.append(f"Рядок {i}: немає імені")
                     continue
-                if email in existing_emails or email in seen_in_file:
-                    skipped += 1
+                if not email:
+                    skipped_details.append(f"Рядок {i}: немає email")
                     continue
+                if "@" not in email:
+                    skipped_details.append(f"Рядок {i}: невірний email «{email}»")
+                    continue
+                if email in existing_emails:
+                    skipped_details.append(f"Рядок {i}: «{email}» вже є в базі")
+                    continue
+                if email in seen_in_file:
+                    skipped_details.append(f"Рядок {i}: дублікат «{email}» у файлі")
+                    continue
+                
                 seen_in_file.add(email)
                 to_insert.append((name, email, 1))
             
+            # Підтвердження
+            if not to_insert:
+                msg = "Немає записів для імпорту."
+                if skipped_details:
+                    msg += f"\n\nПропущено ({len(skipped_details)}):\n" + "\n".join(skipped_details[:10])
+                    if len(skipped_details) > 10:
+                        msg += f"\n... та ще {len(skipped_details) - 10}"
+                Msg.warning(self, "Імпорт", msg)
+                return
+            
+            confirm_msg = f"Імпортувати {len(to_insert)} користувачів?"
+            if skipped_details:
+                confirm_msg += f"\n\nБуде пропущено: {len(skipped_details)}"
+            if Msg.question(self, "Підтвердження", confirm_msg) != Msg.StandardButton.Yes:
+                return
+            
             # Batch insert
-            if to_insert:
-                self.db.executemany(
-                    "INSERT INTO students (full_name, email, attempts_allowed) VALUES (?, ?, ?)",
-                    to_insert
-                )
+            self.db.executemany(
+                "INSERT INTO students (full_name, email, attempts_allowed) VALUES (?, ?, ?)",
+                to_insert
+            )
+            
+            # Лог в audit
+            self.db.log_audit("students_imported", "admin", f"imported={len(to_insert)}, skipped={len(skipped_details)}")
             
             self.reload()
-            Msg.information(self, "Імпорт", f"Імпортовано: {len(to_insert)}, пропущено: {skipped}")
+            
+            # Результат з деталями
+            result_msg = f"Імпортовано: {len(to_insert)}"
+            if skipped_details:
+                result_msg += f"\nПропущено: {len(skipped_details)}\n\n" + "\n".join(skipped_details[:10])
+                if len(skipped_details) > 10:
+                    result_msg += f"\n... та ще {len(skipped_details) - 10}"
+            Msg.information(self, "Імпорт", result_msg)
+            
         except Exception as exc:
+            logger.exception("Помилка імпорту")
             Msg.critical(self, "Помилка", str(exc))
 
     def _smtp_test(self):
@@ -315,10 +366,17 @@ class StudentsTab(QWidget):
 
     def _parse_csv(self, path):
         rows = []
-        with open(path, encoding="utf-8-sig") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                rows.append(dict(row))
+        # Спроба різних кодувань
+        for encoding in ("utf-8-sig", "utf-8", "cp1251", "latin-1"):
+            try:
+                with open(path, encoding=encoding) as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        rows.append(dict(row))
+                return rows
+            except UnicodeDecodeError:
+                rows = []
+                continue
         return rows
 
     def _parse_xlsx(self, path):
