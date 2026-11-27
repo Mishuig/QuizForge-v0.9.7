@@ -46,7 +46,7 @@ class EmailScreen(QWidget):
         self.on_code_sent = on_code_sent
 
         card, lay = centered_card(self, max_width=480)
-        lay.addWidget(brand_row("logo-client.svg", 72))
+        lay.addWidget(brand_row("logo-client.png", 72))
         lay.addSpacing(8)
 
         title = align_center(QLabel("Вхід до тесту"))
@@ -158,7 +158,7 @@ class CodeScreen(QWidget):
         self.on_back = on_back
 
         card, lay = centered_card(self, max_width=480)
-        lay.addWidget(brand_row("logo-client.svg", 72))
+        lay.addWidget(brand_row("logo-client.png", 72))
         lay.addSpacing(8)
 
         title = align_center(QLabel("Код із листа"))
@@ -286,7 +286,7 @@ class ConsentScreen(QWidget):
         super().__init__(parent)
         card, lay = centered_card(self, max_width=720, min_width=320)
         lay.setSpacing(18)
-        lay.addWidget(brand_row("logo-client.svg", 64))
+        lay.addWidget(brand_row("logo-client.png", 64))
 
         title = align_center(QLabel("Перед початком"))
         title.setObjectName("titleLabel")
