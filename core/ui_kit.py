@@ -183,31 +183,31 @@ class ThemeToggle(QPushButton):
         # Кнопка кругла, протилежного кольору до теми
         is_dark = ui_theme.current_theme() == "dark"
         if is_dark:
-            # Темна тема → світла кнопка
+            # Темна тема → світла кнопка з темним контуром
             self.setStyleSheet("""
                 QPushButton#themeToggle {
-                    background: #F1F5F9;
-                    border: 2px solid #CBD5E1;
+                    background: #FFFFFF;
+                    border: 2px solid #0F172A;
                     border-radius: 24px;
                     padding: 2px;
                 }
                 QPushButton#themeToggle:hover {
-                    background: #FFFFFF;
-                    border-color: #94A3B8;
+                    background: #F1F5F9;
+                    border-color: #1E293B;
                 }
             """)
         else:
-            # Світла тема → темна кнопка
+            # Світла тема → темна кнопка зі світлим контуром
             self.setStyleSheet("""
                 QPushButton#themeToggle {
                     background: #1E293B;
-                    border: 2px solid #334155;
+                    border: 2px solid #F1F5F9;
                     border-radius: 24px;
                     padding: 2px;
                 }
                 QPushButton#themeToggle:hover {
                     background: #0F172A;
-                    border-color: #475569;
+                    border-color: #FFFFFF;
                 }
             """)
 
