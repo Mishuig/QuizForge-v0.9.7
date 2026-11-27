@@ -46,7 +46,7 @@ class EmailScreen(QWidget):
         self.on_code_sent = on_code_sent
 
         card, lay = centered_card(self, max_width=480)
-        lay.addWidget(brand_row("logo-client.svg", 44))
+        lay.addWidget(brand_row("logo-client.svg", 72))
         lay.addSpacing(8)
 
         title = align_center(QLabel("Вхід до тесту"))
@@ -86,7 +86,6 @@ class EmailScreen(QWidget):
         try:
             code, student = self.otp.request_code(email)
         except OtpDenied as exc:
-            # Нейтральне повідомлення — без деталей
             msg = str(exc)
             if "використано" in msg.lower():
                 self.status.setText(msg)
@@ -104,7 +103,6 @@ class EmailScreen(QWidget):
             self.btn.setEnabled(True)
             return
 
-        # Відправка листа
         try:
             self._send_otp_email(email, code)
         except MailerError as exc:
@@ -160,7 +158,7 @@ class CodeScreen(QWidget):
         self.on_back = on_back
 
         card, lay = centered_card(self, max_width=480)
-        lay.addWidget(brand_row("logo-client.svg", 44))
+        lay.addWidget(brand_row("logo-client.svg", 72))
         lay.addSpacing(8)
 
         title = align_center(QLabel("Код із листа"))
@@ -186,7 +184,6 @@ class CodeScreen(QWidget):
         self.btn_login.clicked.connect(self._submit)
         lay.addWidget(self.btn_login)
 
-        # Другорядні дії в одному рядку, що ділить ширину порівну
         sec = QHBoxLayout()
         sec.setSpacing(12)
         self.btn_back = QPushButton("← Інша пошта")
@@ -289,13 +286,12 @@ class ConsentScreen(QWidget):
         super().__init__(parent)
         card, lay = centered_card(self, max_width=720, min_width=320)
         lay.setSpacing(18)
-        lay.addWidget(brand_row("logo-client.svg", 40))
+        lay.addWidget(brand_row("logo-client.svg", 64))
 
         title = align_center(QLabel("Перед початком"))
         title.setObjectName("titleLabel")
         lay.addWidget(title)
 
-        # Хто і який тест — дві «плашки», що переходять в колонку на вузькому вікні
         info = QGridLayout()
         info.setSpacing(12)
         for col, (cap, val) in enumerate(
@@ -317,7 +313,6 @@ class ConsentScreen(QWidget):
             info.setColumnStretch(col, 1)
         lay.addLayout(info)
 
-        # Правила — у скролі, щоб на малих екранах кнопки завжди були видимі
         intro = QLabel("Під час тесту ведеться запис екрана та журнал дій.")
         intro.setObjectName("bodyLabel")
         intro.setWordWrap(True)
