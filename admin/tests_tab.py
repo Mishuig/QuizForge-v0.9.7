@@ -107,7 +107,6 @@ class TestsTab(QWidget):
         body.setSpacing(12)
         root.addLayout(body, 1)
 
-        # Sidebar
         sidebar, side = self._card()
         sidebar.setMinimumWidth(160)
         sidebar.setMaximumWidth(240)
@@ -117,7 +116,6 @@ class TestsTab(QWidget):
         self.tests_list.currentItemChanged.connect(self._on_test_selected)
         side.addWidget(self.tests_list, 1)
 
-        # Icon buttons with FlowLayout
         self.btn_new_test = icon_button("fa5s.plus", "Новий тест", "#3b82f6", accent=True)
         self.btn_new_test.clicked.connect(self._new_test)
         self.btn_delete_test = icon_button("fa5s.trash", "Видалити", "#F87171", danger=True)
@@ -129,7 +127,6 @@ class TestsTab(QWidget):
         side.addWidget(button_row(self.btn_new_test, self.btn_delete_test, self.btn_import, self.btn_template))
         body.addWidget(sidebar)
 
-        # Content area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -140,7 +137,6 @@ class TestsTab(QWidget):
         scroll.setWidget(content)
         body.addWidget(scroll, 1)
 
-        # Test properties
         props, pl = self._card()
         pl.addWidget(self._heading("Властивості тесту"))
         self.title_edit = QLineEdit()
@@ -173,14 +169,12 @@ class TestsTab(QWidget):
         pl.addWidget(button_row(save_test_btn), alignment=Qt.AlignmentFlag.AlignRight)
         col.addWidget(props)
 
-        # Questions
         qcard, ql = self._card()
         ql.addWidget(self._heading("Питання"))
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
         ql.addWidget(splitter)
 
-        # Question list
         q_left = QVBoxLayout()
         q_left.setSpacing(8)
         self.questions_list = QListWidget()
@@ -203,7 +197,6 @@ class TestsTab(QWidget):
         left_w.setMinimumWidth(140)
         splitter.addWidget(left_w)
 
-        # Question editor
         q_right = QVBoxLayout()
         q_right.setSpacing(10)
         self.q_text = QTextEdit()
@@ -233,7 +226,6 @@ class TestsTab(QWidget):
         self.type_hint.setWordWrap(True)
         q_right.addWidget(self.type_hint)
 
-        # Options
         self.options_group = QWidget()
         og = QVBoxLayout(self.options_group)
         og.setContentsMargins(0, 0, 0, 0)
@@ -256,7 +248,6 @@ class TestsTab(QWidget):
         og.addWidget(button_row(add_opt_btn))
         q_right.addWidget(self.options_group)
 
-        # Open answers
         self.open_group = QWidget()
         og2 = QVBoxLayout(self.open_group)
         og2.setContentsMargins(0, 0, 0, 0)
@@ -466,8 +457,34 @@ class TestsTab(QWidget):
         if not path:
             return
         try:
-            questions = parse_excel(path)
-            Msg.information(self, "Імпорт", f"Імпортовано {len(questions)} питань")
+            result = parse_excel(path)
+            if result.errors:
+                err_text = "\n".join(f"Рядок {e.row}: {e.message}" for e in result.errors[:10])
+                Msg.warning(self, "Помилки імпорту", err_text)
+                return
+            if not result.questions:
+                Msg.warning(self, "Імпорт", "У файлі не знайдено питань")
+                return
+            if not self._current_test_id:
+                Msg.warning(self, "Імпорт", "Спочатку виберіть тест")
+                return
+            payload = questions_to_db_payload(result.questions)
+            for q in payload:
+                qid = self.db.insert("questions", {
+                    "test_id": self._current_test_id,
+                    "text": q["text"],
+                    "qtype": q["qtype"],
+                    "points": q["points"],
+                    "order_index": self.questions_list.count(),
+                })
+                for opt in q.get("options", []):
+                    self.db.insert("options", {
+                        "question_id": qid,
+                        "text": opt["text"],
+                        "is_correct": int(opt["is_correct"]),
+                    })
+            self._load_questions(self._current_test_id)
+            Msg.information(self, "Імпорт", f"Імпортовано {len(result.questions)} питань")
         except Exception as exc:
             Msg.critical(self, "Помилка", str(exc))
 
