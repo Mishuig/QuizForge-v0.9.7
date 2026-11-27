@@ -98,7 +98,6 @@ class MainWindow(QMainWindow):
         self.db = db
         self.config = config
         self.setWindowTitle("QuizForge — Адміністрування")
-        # Мінімальний розмір ~10x10 см
         self.setMinimumSize(380, 380)
         self.resize(1100, 700)
 
@@ -113,15 +112,15 @@ class MainWindow(QMainWindow):
         topbar.setObjectName("topbar")
         topbar.setMinimumHeight(48)
         topbar.setMaximumHeight(56)
-        bar = QHBoxLayout(topbar)
-        bar.setContentsMargins(16, 0, 16, 0)
-        bar.setSpacing(8)
+        self._topbar_layout = QHBoxLayout(topbar)
+        self._topbar_layout.setContentsMargins(16, 0, 16, 0)
+        self._topbar_layout.setSpacing(8)
 
-        bar.addWidget(ThemedLogo("logo-admin.svg", 24))
+        self._topbar_layout.addWidget(ThemedLogo("logo-admin.svg", 24))
         title = QLabel("QuizForge")
         title.setObjectName("logoLabel")
-        bar.addWidget(title)
-        bar.addSpacing(16)
+        self._topbar_layout.addWidget(title)
+        self._topbar_layout.addSpacing(16)
 
         self.btn_tests = QPushButton("Тести")
         self.btn_users = QPushButton("Користувачі")
@@ -131,9 +130,9 @@ class MainWindow(QMainWindow):
             b.setCheckable(True)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-            bar.addWidget(b)
-        bar.addStretch(1)
-        bar.addWidget(ThemeToggle())
+            self._topbar_layout.addWidget(b)
+        self._topbar_layout.addStretch(1)
+        self._topbar_layout.addWidget(ThemeToggle())
         root.addWidget(topbar)
 
         # Content
@@ -164,17 +163,29 @@ class MainWindow(QMainWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        # Адаптуємо шрифт при зміні розміру
         width = self.width()
+        
+        # Адаптивний шрифт
         if width < 600:
             font_size = 12
+            margin = 8
+            spacing = 4
         elif width < 900:
             font_size = 13
+            margin = 12
+            spacing = 6
         else:
             font_size = 14
+            margin = 16
+            spacing = 8
+        
         font = self.font()
         font.setPointSize(font_size)
         self.setFont(font)
+        
+        # Адаптивні відступи topbar
+        self._topbar_layout.setContentsMargins(margin, 0, margin, 0)
+        self._topbar_layout.setSpacing(spacing)
 
 
 def main():
