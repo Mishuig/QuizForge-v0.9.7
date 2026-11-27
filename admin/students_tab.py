@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 STATUS_KIND = {"waiting": "muted", "in_progress": "info", "completed": "ok", "blocked": "bad"}
 STATUS_LABELS = {"waiting": "Очікує", "in_progress": "Проходить", "completed": "Завершено", "blocked": "Заблоковано"}
 
-# Альтернативні назви колонок
 NAME_COLUMNS = {"name", "full_name", "ім'я", "піб", "прізвище", "фио", "фіо"}
 EMAIL_COLUMNS = {"email", "пошта", "електронна пошта", "e-mail", "mail"}
 
@@ -38,7 +37,6 @@ def _normalize_email(email: str) -> str:
 
 
 def _extract_field(row: dict, candidates: set) -> str:
-    """Витягує значення з рядка за альтернативними назвами колонок."""
     for key in row:
         if key and key.lower().strip() in candidates:
             val = row.get(key)
@@ -285,17 +283,15 @@ class StudentsTab(QWidget):
                 Msg.information(self, "Імпорт", "Файл порожній або не знайдено даних.")
                 return
             
-            # Завантажуємо існуючі email
-            existing_emails = set(
-                r["email"].lower() for r in self.db.fetchall("SELECT email FROM students")
-            )
+            # Завантажуємо існуючі email з id
+            existing = {r["email"].lower(): r["id"] for r in self.db.fetchall("SELECT id, email FROM students")}
             
-            # Фільтруємо з детальним логом причин
             to_insert = []
+            to_update = []
             skipped_details = []
             seen_in_file = set()
             
-            for i, r in enumerate(rows, start=2):  # рядок 1 = заголовки
+            for i, r in enumerate(rows, start=2):
                 email = _normalize_email(_extract_field(r, EMAIL_COLUMNS))
                 name = _extract_field(r, NAME_COLUMNS)
                 
@@ -308,47 +304,74 @@ class StudentsTab(QWidget):
                 if "@" not in email:
                     skipped_details.append(f"Рядок {i}: невірний email «{email}»")
                     continue
-                if email in existing_emails:
-                    skipped_details.append(f"Рядок {i}: «{email}» вже є в базі")
-                    continue
                 if email in seen_in_file:
                     skipped_details.append(f"Рядок {i}: дублікат «{email}» у файлі")
                     continue
                 
                 seen_in_file.add(email)
-                to_insert.append((name, email, 1))
+                
+                if email in existing:
+                    to_update.append((name, existing[email]))
+                else:
+                    to_insert.append((name, email, 1))
             
-            # Підтвердження
-            if not to_insert:
+            # Якщо є існуючі — питаємо що робити
+            update_existing = False
+            if to_update:
+                choice = Msg.choice(
+                    self, "Існуючі користувачі",
+                    f"Знайдено {len(to_update)} існуючих email.",
+                    ["Оновити імена", "Пропустити"]
+                )
+                if choice == -1:
+                    return
+                update_existing = (choice == 0)
+            
+            if not to_insert and not (update_existing and to_update):
                 msg = "Немає записів для імпорту."
                 if skipped_details:
                     msg += f"\n\nПропущено ({len(skipped_details)}):\n" + "\n".join(skipped_details[:10])
-                    if len(skipped_details) > 10:
-                        msg += f"\n... та ще {len(skipped_details) - 10}"
                 Msg.warning(self, "Імпорт", msg)
                 return
             
-            confirm_msg = f"Імпортувати {len(to_insert)} користувачів?"
-            if skipped_details:
-                confirm_msg += f"\n\nБуде пропущено: {len(skipped_details)}"
+            # Підтвердження
+            parts = []
+            if to_insert:
+                parts.append(f"додати {len(to_insert)}")
+            if update_existing and to_update:
+                parts.append(f"оновити {len(to_update)}")
+            confirm_msg = f"Імпорт: {' та '.join(parts)} користувачів?"
             if Msg.question(self, "Підтвердження", confirm_msg) != Msg.StandardButton.Yes:
                 return
             
-            # Batch insert
-            self.db.executemany(
-                "INSERT INTO students (full_name, email, attempts_allowed) VALUES (?, ?, ?)",
-                to_insert
-            )
+            # Виконання
+            if to_insert:
+                self.db.executemany(
+                    "INSERT INTO students (full_name, email, attempts_allowed) VALUES (?, ?, ?)",
+                    to_insert
+                )
+            if update_existing and to_update:
+                self.db.executemany(
+                    "UPDATE students SET full_name = ? WHERE id = ?",
+                    to_update
+                )
             
-            # Лог в audit
-            self.db.log_audit("students_imported", "admin", f"imported={len(to_insert)}, skipped={len(skipped_details)}")
+            self.db.log_audit("students_imported", "admin", 
+                f"inserted={len(to_insert)}, updated={len(to_update) if update_existing else 0}, skipped={len(skipped_details)}")
             
             self.reload()
             
-            # Результат з деталями
-            result_msg = f"Імпортовано: {len(to_insert)}"
+            # Результат
+            result_parts = []
+            if to_insert:
+                result_parts.append(f"Додано: {len(to_insert)}")
+            if update_existing and to_update:
+                result_parts.append(f"Оновлено: {len(to_update)}")
             if skipped_details:
-                result_msg += f"\nПропущено: {len(skipped_details)}\n\n" + "\n".join(skipped_details[:10])
+                result_parts.append(f"Пропущено: {len(skipped_details)}")
+            result_msg = "\n".join(result_parts)
+            if skipped_details:
+                result_msg += "\n\n" + "\n".join(skipped_details[:10])
                 if len(skipped_details) > 10:
                     result_msg += f"\n... та ще {len(skipped_details) - 10}"
             Msg.information(self, "Імпорт", result_msg)
@@ -366,7 +389,6 @@ class StudentsTab(QWidget):
 
     def _parse_csv(self, path):
         rows = []
-        # Спроба різних кодувань
         for encoding in ("utf-8-sig", "utf-8", "cp1251", "latin-1"):
             try:
                 with open(path, encoding=encoding) as f:
