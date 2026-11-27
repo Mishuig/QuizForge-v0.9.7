@@ -74,13 +74,22 @@ class OptionRow(QWidget):
             self.text_edit.setText(edit.toPlainText())
 
     def get_data(self):
-        return self.text_edit.text().strip(), self.correct_widget.isChecked()
+        try:
+            return self.text_edit.text().strip(), self.correct_widget.isChecked()
+        except RuntimeError:
+            return "", False
 
     def set_checked(self, checked: bool):
-        self.correct_widget.setChecked(checked)
+        try:
+            self.correct_widget.setChecked(checked)
+        except RuntimeError:
+            pass
 
     def is_checked(self) -> bool:
-        return self.correct_widget.isChecked()
+        try:
+            return self.correct_widget.isChecked()
+        except RuntimeError:
+            return False
 
 
 class TestsTab(QWidget):
@@ -288,14 +297,23 @@ class TestsTab(QWidget):
         self._set_editor_enabled(False)
 
     def _is_single_type(self) -> bool:
-        return self.q_type.currentData() == QuestionType.SINGLE.value
+        try:
+            return self.q_type.currentData() == QuestionType.SINGLE.value
+        except RuntimeError:
+            return False
 
     def _set_editor_enabled(self, enabled):
         for w in (self.title_edit, self.time_spin, self.shuffle_q_cb, self.shuffle_o_cb, self.pass_spin,
                   self.questions_list, self.btn_add_q, self.btn_del_q, self.btn_q_up, self.btn_q_down,
                   self.q_text, self.q_type, self.q_points, self.btn_save_q, self.options_group, self.open_group):
-            w.setEnabled(enabled)
-        self.btn_delete_test.setEnabled(enabled and self._current_test_id is not None)
+            try:
+                w.setEnabled(enabled)
+            except RuntimeError:
+                pass
+        try:
+            self.btn_delete_test.setEnabled(enabled and self._current_test_id is not None)
+        except RuntimeError:
+            pass
 
     def _load_tests(self):
         self.tests_list.clear()
@@ -402,23 +420,44 @@ class TestsTab(QWidget):
         self._current_question_id = None
 
     def _clear_options(self):
+        """Безпечне очищення рядків варіантів та радіогрупи."""
+        # Видаляємо віджети
         while self.options_container.count():
             item = self.options_container.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+            if item and item.widget():
+                try:
+                    item.widget().deleteLater()
+                except RuntimeError:
+                    pass
         self._option_rows.clear()
-        self._radio_group = None
+        
+        # Безпечно видаляємо радіогрупу
+        if self._radio_group is not None:
+            try:
+                # Видаляємо всі кнопки з групи
+                for btn in self._radio_group.buttons():
+                    try:
+                        self._radio_group.removeButton(btn)
+                    except RuntimeError:
+                        pass
+                self._radio_group.deleteLater()
+            except RuntimeError:
+                pass
+            self._radio_group = None
 
     def _add_option_row(self, text="", is_correct=False, focus=False):
         is_single = self._is_single_type()
         row = OptionRow(text, is_correct, is_single=is_single)
-        row.remove_btn.clicked.connect(lambda: self._remove_option_row(row))
+        row.remove_btn.clicked.connect(lambda checked=False, r=row: self._remove_option_row(r))
         
         if is_single:
             if self._radio_group is None:
                 self._radio_group = QButtonGroup(self)
                 self._radio_group.setExclusive(True)
-            self._radio_group.addButton(row.correct_widget)
+            try:
+                self._radio_group.addButton(row.correct_widget)
+            except RuntimeError:
+                logger.warning("Не вдалося додати радіокнопку до групи")
         
         self.options_container.addWidget(row)
         self._option_rows.append(row)
@@ -426,25 +465,38 @@ class TestsTab(QWidget):
             row.text_edit.setFocus()
 
     def _remove_option_row(self, row):
-        if self._radio_group and hasattr(row, 'correct_widget'):
-            self._radio_group.removeButton(row.correct_widget)
-        self.options_container.removeWidget(row)
-        row.deleteLater()
-        self._option_rows.remove(row)
+        """Безпечне видалення рядка варіанту."""
+        try:
+            if self._radio_group is not None and hasattr(row, 'correct_widget'):
+                try:
+                    self._radio_group.removeButton(row.correct_widget)
+                except RuntimeError:
+                    pass
+            self.options_container.removeWidget(row)
+            row.deleteLater()
+            if row in self._option_rows:
+                self._option_rows.remove(row)
+        except RuntimeError:
+            logger.warning("Помилка при видаленні рядка варіанту")
 
     def _on_type_changed(self):
-        qtype = self.q_type.currentData()
-        self.options_group.setVisible(qtype != QuestionType.OPEN.value)
-        self.open_group.setVisible(qtype == QuestionType.OPEN.value)
-        # Перестворюємо рядки з правильним типом кнопки
-        self._rebuild_options()
+        try:
+            qtype = self.q_type.currentData()
+            self.options_group.setVisible(qtype != QuestionType.OPEN.value)
+            self.open_group.setVisible(qtype == QuestionType.OPEN.value)
+            self._rebuild_options()
+        except RuntimeError:
+            logger.warning("Помилка при зміні типу питання")
 
     def _rebuild_options(self):
         """Перестворює рядки варіантів з правильним типом кнопки."""
-        data = [(r.get_data()[0], r.is_checked()) for r in self._option_rows]
-        self._clear_options()
-        for text, checked in data:
-            self._add_option_row(text, checked)
+        try:
+            data = [(r.get_data()[0], r.is_checked()) for r in self._option_rows]
+            self._clear_options()
+            for text, checked in data:
+                self._add_option_row(text, checked)
+        except RuntimeError:
+            logger.warning("Помилка при перестворенні варіантів")
 
     def _add_question(self):
         if not self._current_test_id:
