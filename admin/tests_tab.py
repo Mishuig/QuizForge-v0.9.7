@@ -597,10 +597,18 @@ class TestsTab(QWidget):
                 return
             tid = self.db.insert("tests", {"title": title.strip(), "time_limit_minutes": 60, "created_at": _utc_now()})
             for i, q in enumerate(result.questions):
-                payload = questions_to_db_payload([q], tid)
+                payload = questions_to_db_payload([q])
                 if payload:
-                    qid = self.db.insert("questions", payload[0]["question"])
-                    for opt in payload[0].get("options", []):
+                    qdata = payload[0]
+                    qid = self.db.insert("questions", {
+                        "test_id": tid,
+                        "text": qdata["text"],
+                        "qtype": qdata["qtype"],
+                        "points": qdata["points"],
+                        "open_answers": qdata.get("open_answers", ""),
+                        "order_index": i,
+                    })
+                    for opt in qdata.get("options", []):
                         opt["question_id"] = qid
                         self.db.insert("options", opt)
             self._load_tests()
