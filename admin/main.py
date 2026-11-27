@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QSize
-from PyQt6.QtGui import QFontDatabase, QFont, QPixmap
+from PyQt6.QtGui import QFontDatabase, QFont, QPixmap, QIcon
 from PyQt6.QtWidgets import (
     QPushButton, QStackedWidget, QApplication, QDialog,
     QHBoxLayout, QLabel, QLineEdit, QMainWindow, QVBoxLayout, QWidget, QSizePolicy,
@@ -42,6 +42,7 @@ class PasswordDialog(ThemedDialog):
             min_width=360, max_width=480, icon_pixmap=logo_pixmap("logo-admin.svg", 64), centered=True)
         self.mode = mode
         self.setWindowTitle("QuizForge — Адмін")
+        self.setWindowIcon(QIcon(str(ASSETS / "logo-admin.svg")))
         self.pass_edit = QLineEdit()
         self.pass_edit.setEchoMode(QLineEdit.EchoMode.Password)
         self.pass_edit.setPlaceholderText("Пароль")
@@ -98,6 +99,7 @@ class MainWindow(QMainWindow):
         self.db = db
         self.config = config
         self.setWindowTitle("QuizForge — Адміністрування")
+        self.setWindowIcon(QIcon(str(ASSETS / "logo-admin.svg")))
         self.setMinimumSize(380, 380)
         self.resize(1100, 700)
 
@@ -107,20 +109,22 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # Topbar
+        # Topbar (збільшений для великого лого)
         topbar = QWidget()
         topbar.setObjectName("topbar")
-        topbar.setMinimumHeight(48)
-        topbar.setMaximumHeight(56)
+        topbar.setMinimumHeight(72)
+        topbar.setMaximumHeight(80)
         self._topbar_layout = QHBoxLayout(topbar)
-        self._topbar_layout.setContentsMargins(16, 0, 16, 0)
-        self._topbar_layout.setSpacing(8)
+        self._topbar_layout.setContentsMargins(16, 8, 16, 8)
+        self._topbar_layout.setSpacing(12)
 
-        self._topbar_layout.addWidget(ThemedLogo("logo-admin.svg", 24))
+        # Лого 2.5x більше (24 -> 60)
+        self._topbar_layout.addWidget(ThemedLogo("logo-admin.svg", 60))
         title = QLabel("QuizForge")
         title.setObjectName("logoLabel")
+        title.setStyleSheet("font-size: 24px; font-weight: 700;")
         self._topbar_layout.addWidget(title)
-        self._topbar_layout.addSpacing(16)
+        self._topbar_layout.addSpacing(24)
 
         self.btn_tests = QPushButton("Тести")
         self.btn_users = QPushButton("Користувачі")
@@ -165,7 +169,6 @@ class MainWindow(QMainWindow):
         super().resizeEvent(event)
         width = self.width()
         
-        # Адаптивний шрифт
         if width < 600:
             font_size = 12
             margin = 8
@@ -183,21 +186,21 @@ class MainWindow(QMainWindow):
         font.setPointSize(font_size)
         self.setFont(font)
         
-        # Адаптивні відступи topbar
-        self._topbar_layout.setContentsMargins(margin, 0, margin, 0)
+        self._topbar_layout.setContentsMargins(margin, 8, margin, 8)
         self._topbar_layout.setSpacing(spacing)
 
 
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName("SecureTest Admin")
+    app.setWindowIcon(QIcon(str(ASSETS / "logo-admin.svg")))
     try:
         config = load_config()
     except Exception as exc:
         Msg.critical(None, "Помилка", f"Не вдалося завантажити config.json:\n{exc}")
         return 1
     org = config.get("organization", {})
-    apply_theme(app, org.get("accent_color", "#3b82f6"), org.get("theme", "dark"))
+    apply_theme(app, org.get("accent_color", "#3b82f6"), org.get("theme", "light"))
     if not is_password_set(config):
         dlg = PasswordDialog(mode="setup")
         if dlg.exec() != QDialog.DialogCode.Accepted:
