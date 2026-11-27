@@ -222,10 +222,24 @@ class TestsTab(QWidget):
 
         q_right = QVBoxLayout()
         q_right.setSpacing(10)
+        # Питання — 2 рядки + олівець для розгортання
+        q_header = QHBoxLayout()
+        q_header.addWidget(QLabel("Текст питання"))
+        q_header.addStretch()
+        self.q_expand_btn = QPushButton()
+        self.q_expand_btn.setObjectName("iconBtn")
+        self.q_expand_btn.setIcon(icon("fa5s.pencil-alt", color="#8B93A7"))
+        self.q_expand_btn.setFixedSize(28, 28)
+        self.q_expand_btn.setToolTip("Редагувати повний текст")
+        self.q_expand_btn.clicked.connect(self._expand_question)
+        q_header.addWidget(self.q_expand_btn)
+        q_right.addLayout(q_header)
+        
         self.q_text = QTextEdit()
         self.q_text.setPlaceholderText("Текст питання")
-        self.q_text.setMinimumHeight(60)
-        q_right.addWidget(field("Текст питання", self.q_text))
+        self.q_text.setMaximumHeight(56)
+        self.q_text.setMinimumHeight(44)
+        q_right.addWidget(self.q_text)
 
         self.q_type = QComboBox()
         self.q_type.addItem("Одна правильна", QuestionType.SINGLE.value)
@@ -478,6 +492,23 @@ class TestsTab(QWidget):
                 self._option_rows.remove(row)
         except RuntimeError:
             logger.warning("Помилка при видаленні рядка варіанту")
+
+    def _expand_question(self):
+        """Відкрити діалог для редагування повного тексту питання."""
+        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QTextEdit, QDialogButtonBox
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Редагування питання")
+        dlg.setMinimumSize(500, 300)
+        lay = QVBoxLayout(dlg)
+        edit = QTextEdit()
+        edit.setPlainText(self.q_text.toPlainText())
+        lay.addWidget(edit)
+        btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        btns.accepted.connect(dlg.accept)
+        btns.rejected.connect(dlg.reject)
+        lay.addWidget(btns)
+        if dlg.exec():
+            self.q_text.setPlainText(edit.toPlainText())
 
     def _on_type_changed(self):
         try:
