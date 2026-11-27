@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, QSize, QTimer, QPoint, QRect
+from PyQt6.QtCore import Qt, QSize, QTimer, QPoint, QRect, QEvent
 from PyQt6.QtGui import QFontMetrics
 from PyQt6.QtWidgets import (
     QFrame, QPushButton, QGridLayout, QHBoxLayout, QLabel, QSizePolicy,
@@ -193,33 +193,41 @@ def align_center(label: QLabel) -> QLabel:
 
 
 class DelayedTooltipButton(QPushButton):
-    """Кнопка з підказкою з затримкою."""
+    """Кнопка з підказкою з затримкою без блимання."""
 
-    def __init__(self, tooltip: str, delay_ms: int = 400, parent=None):
+    def __init__(self, tooltip: str, delay_ms: int = 500, parent=None):
         super().__init__(parent)
-        self._tooltip = tooltip
+        self._tooltip_text = tooltip
         self._delay_ms = delay_ms
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._show_tooltip)
-        self._tooltip_visible = False
+        self._showing = False
 
     def enterEvent(self, event):
         super().enterEvent(event)
-        self._timer.start(self._delay_ms)
+        if not self._showing:
+            self._timer.start(self._delay_ms)
 
     def leaveEvent(self, event):
         super().leaveEvent(event)
         self._timer.stop()
-        if self._tooltip_visible:
+        if self._showing:
             QToolTip.hideText()
-            self._tooltip_visible = False
+            self._showing = False
+
+    def mousePressEvent(self, event):
+        self._timer.stop()
+        if self._showing:
+            QToolTip.hideText()
+            self._showing = False
+        super().mousePressEvent(event)
 
     def _show_tooltip(self):
-        if self.underMouse():
-            pos = self.mapToGlobal(QPoint(0, self.height() + 4))
-            QToolTip.showText(pos, self._tooltip, self)
-            self._tooltip_visible = True
+        if self.underMouse() and not self._showing:
+            pos = self.mapToGlobal(QPoint(self.width() // 2, self.height() + 6))
+            QToolTip.showText(pos, self._tooltip_text, self, self.rect(), 3000)
+            self._showing = True
 
 
 def icon_button(
@@ -229,7 +237,7 @@ def icon_button(
     size: int = 20,
     danger: bool = False,
     accent: bool = False,
-    delay_ms: int = 400,
+    delay_ms: int = 500,
 ) -> QPushButton:
     """Іконка-кнопка з підказкою з затримкою."""
     try:
@@ -245,6 +253,7 @@ def icon_button(
     btn.setFixedSize(size + 16, size + 16)
     btn.setCursor(Qt.CursorShape.PointingHandCursor)
     btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+    btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
     if danger:
         btn.setProperty("danger", True)
     if accent:
