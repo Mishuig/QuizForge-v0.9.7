@@ -223,7 +223,9 @@ class TestsTab(QWidget):
         q_right = QVBoxLayout()
         q_right.setSpacing(10)
         # Питання — 2 рядки + олівець для розгортання
-        q_row = QHBoxLayout()
+        q_container = QWidget()
+        q_row = QHBoxLayout(q_container)
+        q_row.setContentsMargins(0, 0, 0, 0)
         q_row.setSpacing(4)
         self.q_text = QTextEdit()
         self.q_text.setPlaceholderText("Текст питання")
@@ -233,7 +235,7 @@ class TestsTab(QWidget):
         self.q_expand_btn = icon_button("fa5s.edit", "Редагувати", size=14)
         self.q_expand_btn.clicked.connect(self._expand_question)
         q_row.addWidget(self.q_expand_btn)
-        q_right.addWidget(field("Текст питання", q_row))
+        q_right.addWidget(field("Текст питання", q_container))
 
         self.q_type = QComboBox()
         self.q_type.addItem("Одна правильна", QuestionType.SINGLE.value)
