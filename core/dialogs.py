@@ -290,6 +290,11 @@ class Msg:
         dlg.exec()
         return result["i"]
 
+    @staticmethod
+    def getText(parent, title, label, echo=QLineEdit.EchoMode.Normal, text="", placeholder="") -> tuple[str, bool]:
+        """Аліас для Input.getText — для зручності."""
+        return Input.getText(parent, title, label, echo, text, placeholder)
+
 
 class Input:
     """Drop-in заміна QInputDialog.getText."""
