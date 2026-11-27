@@ -259,7 +259,7 @@ QScrollBar::add-page, QScrollBar::sub-page {
 }
 
 /* ---------- Навігація ---------- */
-QWidget#topbar { background-color: @INPUT@; border-bottom: 1px solid @BORDER@; min-height: 48px; }
+QWidget#topbar { background-color: @INPUT@; border: none; min-height: 48px; }
 QPushButton#navTab {
     background: transparent;
     border: none;
