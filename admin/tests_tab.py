@@ -432,9 +432,24 @@ class TestsTab(QWidget):
         self._clear_question_editor()
 
     def _move_question(self, direction):
-        if not self._current_question_id:
+        if not self._current_question_id or not self._current_test_id:
             return
+        current_row = self.questions_list.currentRow()
+        new_row = current_row + direction
+        if new_row < 0 or new_row >= self.questions_list.count():
+            return
+        # Отримуємо ID обох питань
+        current_id = self._current_question_id
+        swap_item = self.questions_list.item(new_row)
+        swap_id = swap_item.data(Qt.ItemDataRole.UserRole) if swap_item else None
+        if not swap_id:
+            return
+        # Міняємо order_index
+        self.db.execute("UPDATE questions SET order_index = ? WHERE id = ?", (new_row, current_id))
+        self.db.execute("UPDATE questions SET order_index = ? WHERE id = ?", (current_row, swap_id))
+        # Перезавантажуємо і вибираємо переміщене питання
         self._load_questions(self._current_test_id)
+        self.questions_list.setCurrentRow(new_row)
 
     def _save_question(self):
         if not self._current_question_id:
@@ -459,32 +474,24 @@ class TestsTab(QWidget):
         try:
             result = parse_excel(path)
             if result.errors:
-                err_text = "\n".join(f"Рядок {e.row}: {e.message}" for e in result.errors[:10])
-                Msg.warning(self, "Помилки імпорту", err_text)
+                Msg.warning(self, "Імпорт", "\n".join(result.errors[:5]))
                 return
             if not result.questions:
-                Msg.warning(self, "Імпорт", "У файлі не знайдено питань")
+                Msg.information(self, "Імпорт", "Не знайдено питань.")
                 return
-            if not self._current_test_id:
-                Msg.warning(self, "Імпорт", "Спочатку виберіть тест")
+            title, ok = Msg.getText(self, "Імпорт", "Назва тесту:", text="Імпортований тест")
+            if not ok or not title.strip():
                 return
-            payload = questions_to_db_payload(result.questions)
-            for q in payload:
-                qid = self.db.insert("questions", {
-                    "test_id": self._current_test_id,
-                    "text": q["text"],
-                    "qtype": q["qtype"],
-                    "points": q["points"],
-                    "order_index": self.questions_list.count(),
-                })
-                for opt in q.get("options", []):
-                    self.db.insert("options", {
-                        "question_id": qid,
-                        "text": opt["text"],
-                        "is_correct": int(opt["is_correct"]),
-                    })
-            self._load_questions(self._current_test_id)
-            Msg.information(self, "Імпорт", f"Імпортовано {len(result.questions)} питань")
+            tid = self.db.insert("tests", {"title": title.strip(), "time_limit_minutes": 60, "created_at": _utc_now()})
+            for i, q in enumerate(result.questions):
+                payload = questions_to_db_payload([q], tid)
+                if payload:
+                    qid = self.db.insert("questions", payload[0]["question"])
+                    for opt in payload[0].get("options", []):
+                        opt["question_id"] = qid
+                        self.db.insert("options", opt)
+            self._load_tests()
+            Msg.information(self, "Імпорт", f"Імпортовано {len(result.questions)} питань.")
         except Exception as exc:
             Msg.critical(self, "Помилка", str(exc))
 
