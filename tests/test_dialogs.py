@@ -1,9 +1,20 @@
-"""Тести діалогів — перевіряють наявність методів без GUI.
+"""Тести діалогів — перевіряють наявність методів.
 
-Ці тести НЕ потребують PyQt6 графіки — тільки перевіряють що методи існують.
+Пропускаються, якщо PyQt6 недоступний.
 """
 
 import pytest
+
+try:
+    from PyQt6.QtCore import Qt
+    PYQT_AVAILABLE = True
+except ImportError:
+    PYQT_AVAILABLE = False
+
+pytestmark = pytest.mark.skipif(
+    not PYQT_AVAILABLE,
+    reason="PyQt6 недоступний"
+)
 
 
 def test_msg_has_gettext():
