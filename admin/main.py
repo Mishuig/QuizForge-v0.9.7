@@ -39,10 +39,10 @@ class PasswordDialog(ThemedDialog):
         setup = mode == "setup"
         super().__init__(parent, "Перший запуск" if setup else "Вхід адміністратора",
             "Встановіть пароль." if setup else "Введіть пароль.",
-            min_width=360, max_width=480, icon_pixmap=logo_pixmap("logo-admin.svg", 64), centered=True)
+            min_width=360, max_width=480, icon_pixmap=logo_pixmap("logo-admin.png", 64), centered=True)
         self.mode = mode
         self.setWindowTitle("QuizForge — Адмін")
-        self.setWindowIcon(QIcon(str(ASSETS / "logo-admin.svg")))
+        self.setWindowIcon(QIcon(str(ASSETS / "logo-admin.png")))
         self.pass_edit = QLineEdit()
         self.pass_edit.setEchoMode(QLineEdit.EchoMode.Password)
         self.pass_edit.setPlaceholderText("Пароль")
@@ -99,7 +99,7 @@ class MainWindow(QMainWindow):
         self.db = db
         self.config = config
         self.setWindowTitle("QuizForge — Адміністрування")
-        self.setWindowIcon(QIcon(str(ASSETS / "logo-admin.svg")))
+        self.setWindowIcon(QIcon(str(ASSETS / "logo-admin.png")))
         self.setMinimumSize(380, 380)
         self.resize(1100, 700)
 
@@ -109,7 +109,6 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # Topbar (збільшений для великого лого)
         topbar = QWidget()
         topbar.setObjectName("topbar")
         topbar.setMinimumHeight(72)
@@ -118,8 +117,7 @@ class MainWindow(QMainWindow):
         self._topbar_layout.setContentsMargins(16, 8, 16, 8)
         self._topbar_layout.setSpacing(12)
 
-        # Лого 2.5x більше (24 -> 60)
-        self._topbar_layout.addWidget(ThemedLogo("logo-admin.svg", 60))
+        self._topbar_layout.addWidget(ThemedLogo("logo-admin.png", 60))
         title = QLabel("QuizForge")
         title.setObjectName("logoLabel")
         title.setStyleSheet("font-size: 24px; font-weight: 700;")
@@ -139,7 +137,6 @@ class MainWindow(QMainWindow):
         self._topbar_layout.addWidget(ThemeToggle())
         root.addWidget(topbar)
 
-        # Content
         self.stack = QStackedWidget()
         self.stack.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.tests_tab = TestsTab(db)
@@ -193,7 +190,7 @@ class MainWindow(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName("SecureTest Admin")
-    app.setWindowIcon(QIcon(str(ASSETS / "logo-admin.svg")))
+    app.setWindowIcon(QIcon(str(ASSETS / "logo-admin.png")))
     try:
         config = load_config()
     except Exception as exc:
