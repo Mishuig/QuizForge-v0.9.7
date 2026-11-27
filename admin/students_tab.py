@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QAbstractItemView, QComboBox, QDialog, QDialogButtonBox, QFileDialog,
     QFormLayout, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QPushButton,
     QSpinBox, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QGridLayout,
+    QProgressDialog,
 )
 
 from core.db import Database
@@ -270,22 +271,38 @@ class StudentsTab(QWidget):
             if not rows:
                 Msg.information(self, "Імпорт", "Файл порожній або не знайдено даних.")
                 return
-            imported = 0
+            
+            # Оптимізація: завантажуємо всі існуючі email одним запитом
+            existing_emails = set(
+                r["email"].lower() for r in self.db.fetchall("SELECT email FROM students")
+            )
+            
+            # Фільтруємо валідні записи
+            to_insert = []
             skipped = 0
+            seen_in_file = set()
+            
             for r in rows:
                 email = _normalize_email(r.get("email", ""))
                 name = (r.get("name") or r.get("full_name") or "").strip()
                 if not email or "@" not in email or not name:
                     skipped += 1
                     continue
-                existing = self.db.fetchone("SELECT id FROM students WHERE email = ?", (email,))
-                if existing:
+                if email in existing_emails or email in seen_in_file:
                     skipped += 1
                     continue
-                self.db.insert("students", {"full_name": name, "email": email, "attempts_allowed": 1})
-                imported += 1
+                seen_in_file.add(email)
+                to_insert.append((name, email, 1))
+            
+            # Batch insert
+            if to_insert:
+                self.db.executemany(
+                    "INSERT INTO students (full_name, email, attempts_allowed) VALUES (?, ?, ?)",
+                    to_insert
+                )
+            
             self.reload()
-            Msg.information(self, "Імпорт", f"Імпортовано: {imported}, пропущено: {skipped}")
+            Msg.information(self, "Імпорт", f"Імпортовано: {len(to_insert)}, пропущено: {skipped}")
         except Exception as exc:
             Msg.critical(self, "Помилка", str(exc))
 
@@ -317,6 +334,7 @@ class StudentsTab(QWidget):
                     continue
                 if headers:
                     rows.append(dict(zip(headers, row)))
+            wb.close()
             return rows
         except ImportError:
             Msg.warning(self, "Імпорт", "Встановіть openpyxl: pip install openpyxl")
