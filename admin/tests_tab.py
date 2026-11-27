@@ -18,7 +18,7 @@ from core.db import Database
 from core.dialogs import Msg
 from core.excel_import import generate_template, parse_excel, questions_to_db_payload
 from core.models import QuestionType
-from core.ui_kit import field, icon_button, button_row
+from core.ui_kit import field, icon_button, button_row, AdaptiveLabel
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ class TestsTab(QWidget):
 
     @staticmethod
     def _heading(text):
-        lbl = QLabel(text)
+        lbl = AdaptiveLabel(text, max_font=14, min_font=10)
         lbl.setObjectName("sectionLabel")
         return lbl
 
@@ -99,7 +99,7 @@ class TestsTab(QWidget):
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(12)
-        title = QLabel("Тести")
+        title = AdaptiveLabel("Тести", max_font=22, min_font=14)
         title.setObjectName("titleLabel")
         root.addWidget(title)
 
@@ -356,8 +356,11 @@ class TestsTab(QWidget):
         self.questions_list.clear()
         rows = self.db.fetchall("SELECT id, text FROM questions WHERE test_id = ? ORDER BY order_index", (test_id,))
         for i, row in enumerate(rows):
-            item = QListWidgetItem(f"{i+1}. {row['text'][:40]}...")
+            text = row["text"]
+            display = f"{i+1}. {text[:30]}..." if len(text) > 30 else f"{i+1}. {text}"
+            item = QListWidgetItem(display)
             item.setData(Qt.ItemDataRole.UserRole, row["id"])
+            item.setToolTip(text)
             self.questions_list.addItem(item)
 
     def _on_question_selected(self, current, _prev):
