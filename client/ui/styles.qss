@@ -206,6 +206,13 @@ QLabel#errorLabel {
     border-radius: 6px;
     padding: 6px 10px;
 }
+QFrame#divider {
+    border: none;
+    background: transparent;
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+}
 
 /* ---------- Варіанти відповідей ---------- */
 QWidget#optionRow {
