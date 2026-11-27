@@ -258,7 +258,36 @@ class StudentsTab(QWidget):
         path, _ = QFileDialog.getOpenFileName(self, "Імпорт", "", "Excel/CSV (*.xlsx *.csv)")
         if not path:
             return
-        Msg.information(self, "Імпорт", f"Файл: {path}")
+        try:
+            ext = Path(path).suffix.lower()
+            if ext == ".csv":
+                rows = self._parse_csv(path)
+            elif ext == ".xlsx":
+                rows = self._parse_xlsx(path)
+            else:
+                Msg.warning(self, "Імпорт", "Непідтримуваний формат файлу.")
+                return
+            if not rows:
+                Msg.information(self, "Імпорт", "Файл порожній або не знайдено даних.")
+                return
+            imported = 0
+            skipped = 0
+            for r in rows:
+                email = _normalize_email(r.get("email", ""))
+                name = (r.get("name") or r.get("full_name") or "").strip()
+                if not email or "@" not in email or not name:
+                    skipped += 1
+                    continue
+                existing = self.db.fetchone("SELECT id FROM students WHERE email = ?", (email,))
+                if existing:
+                    skipped += 1
+                    continue
+                self.db.insert("students", {"full_name": name, "email": email, "attempts_allowed": 1})
+                imported += 1
+            self.reload()
+            Msg.information(self, "Імпорт", f"Імпортовано: {imported}, пропущено: {skipped}")
+        except Exception as exc:
+            Msg.critical(self, "Помилка", str(exc))
 
     def _smtp_test(self):
         try:
@@ -268,7 +297,27 @@ class StudentsTab(QWidget):
             Msg.critical(self, "SMTP", str(exc))
 
     def _parse_csv(self, path):
-        return []
+        rows = []
+        with open(path, encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                rows.append(dict(row))
+        return rows
 
     def _parse_xlsx(self, path):
-        return []
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(path, read_only=True)
+            ws = wb.active
+            rows = []
+            headers = None
+            for i, row in enumerate(ws.iter_rows(values_only=True)):
+                if i == 0:
+                    headers = [str(c).lower().strip() if c else "" for c in row]
+                    continue
+                if headers:
+                    rows.append(dict(zip(headers, row)))
+            return rows
+        except ImportError:
+            Msg.warning(self, "Імпорт", "Встановіть openpyxl: pip install openpyxl")
+            return []
