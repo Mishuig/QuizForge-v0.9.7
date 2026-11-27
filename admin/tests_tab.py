@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
-    QCheckBox, QComboBox, QDialog, QDoubleSpinBox, QFileDialog,
+    QCheckBox, QRadioButton, QButtonGroup, QComboBox, QDialog, QDoubleSpinBox, QFileDialog,
     QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
     QScrollArea, QSpinBox, QSplitter, QTextEdit, QVBoxLayout, QWidget, QFrame, QGridLayout,
 )
@@ -28,24 +28,31 @@ def _utc_now():
 
 
 class OptionRow(QWidget):
-    def __init__(self, text="", is_correct=False, parent=None):
+    def __init__(self, text="", is_correct=False, is_single=False, parent=None):
         super().__init__(parent)
         self.setObjectName("optionRow")
         self.setMinimumHeight(44)
+        self._is_single = is_single
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 4, 0, 4)
         layout.setSpacing(8)
-        self.correct_cb = QCheckBox()
-        self.correct_cb.setChecked(is_correct)
-        self.correct_cb.setToolTip("Правильна відповідь")
-        self.correct_cb.setFixedWidth(24)
+        
+        if is_single:
+            self.correct_widget = QRadioButton()
+            self.correct_widget.setToolTip("Правильна відповідь (одна)")
+        else:
+            self.correct_widget = QCheckBox()
+            self.correct_widget.setToolTip("Правильна відповідь")
+        self.correct_widget.setChecked(is_correct)
+        self.correct_widget.setFixedWidth(24)
+        
         self.text_edit = QLineEdit(text)
         self.text_edit.setPlaceholderText("Текст варіанту")
         self.text_edit.setMinimumHeight(36)
         self.remove_btn = icon_button("fa5s.times", "Видалити", "#F87171", size=14, danger=True)
         self.expand_btn = icon_button("fa5s.edit", "Редагувати", size=14)
         self.expand_btn.clicked.connect(self._expand)
-        layout.addWidget(self.correct_cb)
+        layout.addWidget(self.correct_widget)
         layout.addWidget(self.text_edit, stretch=1)
         layout.addWidget(self.expand_btn)
         layout.addWidget(self.remove_btn)
@@ -67,7 +74,13 @@ class OptionRow(QWidget):
             self.text_edit.setText(edit.toPlainText())
 
     def get_data(self):
-        return self.text_edit.text().strip(), self.correct_cb.isChecked()
+        return self.text_edit.text().strip(), self.correct_widget.isChecked()
+
+    def set_checked(self, checked: bool):
+        self.correct_widget.setChecked(checked)
+
+    def is_checked(self) -> bool:
+        return self.correct_widget.isChecked()
 
 
 class TestsTab(QWidget):
@@ -77,6 +90,7 @@ class TestsTab(QWidget):
         self._current_test_id = None
         self._current_question_id = None
         self._option_rows = []
+        self._radio_group = None
         self._build_ui()
         self._load_tests()
 
@@ -273,6 +287,9 @@ class TestsTab(QWidget):
 
         self._set_editor_enabled(False)
 
+    def _is_single_type(self) -> bool:
+        return self.q_type.currentData() == QuestionType.SINGLE.value
+
     def _set_editor_enabled(self, enabled):
         for w in (self.title_edit, self.time_spin, self.shuffle_q_cb, self.shuffle_o_cb, self.pass_spin,
                   self.questions_list, self.btn_add_q, self.btn_del_q, self.btn_q_up, self.btn_q_down,
@@ -390,16 +407,27 @@ class TestsTab(QWidget):
             if item.widget():
                 item.widget().deleteLater()
         self._option_rows.clear()
+        self._radio_group = None
 
     def _add_option_row(self, text="", is_correct=False, focus=False):
-        row = OptionRow(text, is_correct)
+        is_single = self._is_single_type()
+        row = OptionRow(text, is_correct, is_single=is_single)
         row.remove_btn.clicked.connect(lambda: self._remove_option_row(row))
+        
+        if is_single:
+            if self._radio_group is None:
+                self._radio_group = QButtonGroup(self)
+                self._radio_group.setExclusive(True)
+            self._radio_group.addButton(row.correct_widget)
+        
         self.options_container.addWidget(row)
         self._option_rows.append(row)
         if focus:
             row.text_edit.setFocus()
 
     def _remove_option_row(self, row):
+        if self._radio_group and hasattr(row, 'correct_widget'):
+            self._radio_group.removeButton(row.correct_widget)
         self.options_container.removeWidget(row)
         row.deleteLater()
         self._option_rows.remove(row)
@@ -408,6 +436,15 @@ class TestsTab(QWidget):
         qtype = self.q_type.currentData()
         self.options_group.setVisible(qtype != QuestionType.OPEN.value)
         self.open_group.setVisible(qtype == QuestionType.OPEN.value)
+        # Перестворюємо рядки з правильним типом кнопки
+        self._rebuild_options()
+
+    def _rebuild_options(self):
+        """Перестворює рядки варіантів з правильним типом кнопки."""
+        data = [(r.get_data()[0], r.is_checked()) for r in self._option_rows]
+        self._clear_options()
+        for text, checked in data:
+            self._add_option_row(text, checked)
 
     def _add_question(self):
         if not self._current_test_id:
@@ -438,16 +475,13 @@ class TestsTab(QWidget):
         new_row = current_row + direction
         if new_row < 0 or new_row >= self.questions_list.count():
             return
-        # Отримуємо ID обох питань
         current_id = self._current_question_id
         swap_item = self.questions_list.item(new_row)
         swap_id = swap_item.data(Qt.ItemDataRole.UserRole) if swap_item else None
         if not swap_id:
             return
-        # Міняємо order_index
         self.db.execute("UPDATE questions SET order_index = ? WHERE id = ?", (new_row, current_id))
         self.db.execute("UPDATE questions SET order_index = ? WHERE id = ?", (current_row, swap_id))
-        # Перезавантажуємо і вибираємо переміщене питання
         self._load_questions(self._current_test_id)
         self.questions_list.setCurrentRow(new_row)
 
