@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, QSize, QTimer, QPoint, QRect
-from PyQt6.QtGui import QFontMetrics, QFont
+from PyQt6.QtGui import QFontMetrics, QFont, QIcon
 from PyQt6.QtWidgets import (
     QFrame, QPushButton, QGridLayout, QHBoxLayout, QLabel, QSizePolicy,
     QVBoxLayout, QWidget, QToolTip, QLayout,
 )
 
 from core import ui_theme
-from core.ui_theme import logo_pixmap
+from core.ui_theme import logo_pixmap, ASSETS
 
 
 class AdaptiveLabel(QLabel):
@@ -168,12 +168,45 @@ class ThemeToggle(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip("Перемкнути тему")
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setFixedSize(40, 40)
+        # Іконка сонце+місяць
+        icon_path = ASSETS / "theme-toggle.png"
+        if icon_path.exists():
+            self.setIcon(QIcon(str(icon_path)))
+            self.setIconSize(QSize(24, 24))
         self.clicked.connect(lambda: ui_theme.toggle_theme())
         ui_theme.bus.changed.connect(self._sync)
         self._sync()
 
     def _sync(self, *_args):
-        self.setText("☀" if ui_theme.current_theme() == "dark" else "☾")
+        # Кнопка протилежного кольору до теми
+        is_dark = ui_theme.current_theme() == "dark"
+        if is_dark:
+            # Темна тема → світла кнопка
+            self.setStyleSheet("""
+                QPushButton#themeToggle {
+                    background: #F1F5F9;
+                    border: 1px solid #CBD5E1;
+                    border-radius: 20px;
+                }
+                QPushButton#themeToggle:hover {
+                    background: #FFFFFF;
+                    border-color: #94A3B8;
+                }
+            """)
+        else:
+            # Світла тема → темна кнопка
+            self.setStyleSheet("""
+                QPushButton#themeToggle {
+                    background: #1E293B;
+                    border: 1px solid #334155;
+                    border-radius: 20px;
+                }
+                QPushButton#themeToggle:hover {
+                    background: #0F172A;
+                    border-color: #475569;
+                }
+            """)
 
 
 def brand_row(logo: str = "logo-client.svg", size: int = 40, centered: bool = True) -> QWidget:
