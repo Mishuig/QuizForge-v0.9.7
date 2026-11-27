@@ -283,11 +283,11 @@ class StudentsTab(QWidget):
                 Msg.information(self, "Імпорт", "Файл порожній або не знайдено даних.")
                 return
             
-            # Завантажуємо існуючі email з id
-            existing = {r["email"].lower(): r["id"] for r in self.db.fetchall("SELECT id, email FROM students")}
+            # Завантажуємо існуючі email з id та іменем
+            existing = {r["email"].lower(): (r["id"], r["full_name"]) for r in self.db.fetchall("SELECT id, email, full_name FROM students")}
             
             to_insert = []
-            to_update = []
+            to_update = []  # (new_name, id, old_name, email)
             skipped_details = []
             seen_in_file = set()
             
@@ -311,17 +311,26 @@ class StudentsTab(QWidget):
                 seen_in_file.add(email)
                 
                 if email in existing:
-                    to_update.append((name, existing[email]))
+                    old_id, old_name = existing[email]
+                    if name != old_name:
+                        to_update.append((name, old_id, old_name, email))
                 else:
                     to_insert.append((name, email, 1))
             
-            # Якщо є існуючі — питаємо що робити
+            # Якщо є зміни — показуємо прев'ю
             update_existing = False
             if to_update:
+                preview_lines = []
+                for new_name, _, old_name, email in to_update[:5]:
+                    preview_lines.append(f"«{old_name}» → «{new_name}» ({email})")
+                if len(to_update) > 5:
+                    preview_lines.append(f"... та ще {len(to_update) - 5}")
+                
+                preview_msg = f"Знайдено {len(to_update)} змін:\n\n" + "\n".join(preview_lines)
                 choice = Msg.choice(
-                    self, "Існуючі користувачі",
-                    f"Знайдено {len(to_update)} існуючих email.",
-                    ["Оновити імена", "Пропустити"]
+                    self, "Оновити існуючих?",
+                    preview_msg,
+                    ["Оновити", "Пропустити"]
                 )
                 if choice == -1:
                     return
@@ -334,7 +343,7 @@ class StudentsTab(QWidget):
                 Msg.warning(self, "Імпорт", msg)
                 return
             
-            # Підтвердження
+            # Фінальне підтвердження
             parts = []
             if to_insert:
                 parts.append(f"додати {len(to_insert)}")
@@ -353,7 +362,7 @@ class StudentsTab(QWidget):
             if update_existing and to_update:
                 self.db.executemany(
                     "UPDATE students SET full_name = ? WHERE id = ?",
-                    to_update
+                    [(name, id_) for name, id_, _, _ in to_update]
                 )
             
             self.db.log_audit("students_imported", "admin", 
