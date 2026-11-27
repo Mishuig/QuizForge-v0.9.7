@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 )
 
 from core.db import Database
-from core.ui_kit import field, icon_button
+from core.ui_kit import field, icon_button, button_row, AdaptiveLabel
 from core.dialogs import Msg, Input, ThemedDialog
 from core.ui_theme import status_item
 from core.mailer import MailerError, send_test_message
@@ -105,14 +105,12 @@ class StudentsTab(QWidget):
 
     def _build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(32, 24, 32, 20)
+        root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(12)
-        header = QHBoxLayout()
-        title = QLabel("Користувачі")
+        
+        title = AdaptiveLabel("Користувачі", max_font=22, min_font=14)
         title.setObjectName("titleLabel")
-        header.addWidget(title)
-        header.addStretch()
-        root.addLayout(header)
+        root.addWidget(title)
 
         top = QHBoxLayout()
         top.addWidget(QLabel("Пошук:"))
@@ -140,9 +138,6 @@ class StudentsTab(QWidget):
         self.table.doubleClicked.connect(self._edit_student)
         root.addWidget(self.table, stretch=1)
 
-        # Icon buttons
-        btns = QHBoxLayout()
-        btns.setSpacing(8)
         self.btn_add = icon_button("fa5s.user-plus", "Додати", "#3b82f6", accent=True)
         self.btn_add.clicked.connect(self._add_student)
         self.btn_edit = icon_button("fa5s.edit", "Редагувати")
@@ -156,11 +151,7 @@ class StudentsTab(QWidget):
         self.btn_smtp_test = icon_button("fa5s.envelope", "Тест SMTP")
         self.btn_smtp_test.clicked.connect(self._smtp_test)
 
-        for b in (self.btn_add, self.btn_edit, self.btn_delete, self.btn_retry, self.btn_import):
-            btns.addWidget(b)
-        btns.addStretch()
-        btns.addWidget(self.btn_smtp_test)
-        root.addLayout(btns)
+        root.addWidget(button_row(self.btn_add, self.btn_edit, self.btn_delete, self.btn_retry, self.btn_import, self.btn_smtp_test))
 
         self.stats_label = QLabel("")
         self.stats_label.setObjectName("subtitleLabel")
