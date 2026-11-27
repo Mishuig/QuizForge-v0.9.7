@@ -1,12 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <title>QuizForge Client</title>
-  <!-- Red cape/shield -->
-  <path d="M200 40 C240 70, 240 190, 200 220 C175 235, 145 220, 128 190 C111 220, 81 235, 56 220 C16 190, 16 70, 56 40 C81 25, 111 40, 128 70 C145 40, 175 25, 200 40 Z" fill="#E53935"/>
-  <!-- Anvil body -->
-  <path d="M50 100 L90 100 L90 115 L65 115 L65 155 L90 155 L90 170 L50 170 Z" fill="#1A237E"/>
-  <path d="M90 85 L170 85 L170 125 L145 125 L145 170 L115 170 L115 125 L90 125 Z" fill="#1A237E"/>
-  <!-- Anvil top -->
-  <path d="M75 70 L185 70 L185 90 L75 90 Z" fill="#283593"/>
-  <!-- Lightning bolt -->
-  <polygon points="140 95, 120 135, 135 135, 128 175, 165 130, 148 130, 155 95" fill="#FFD600"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><title>QuizForge Client</title><path fill="#e53935" d="M200 40c40 30 40 150 0 180-25 15-55 0-72-30-17 30-47 45-72 30-40-30-40-150 0-180 25-15 55 0 72 30 17-30 47-45 72-30"/><path fill="#1a237e" d="M50 100h40v15H65v40h25v15H50Zm40-15h80v40h-25v45h-30v-45H90Z"/><path fill="#283593" d="M75 70h110v20H75Z"/><path fill="#ffd600" d="m140 95-20 40h15l-7 40 37-45h-17l7-35z"/></svg>
