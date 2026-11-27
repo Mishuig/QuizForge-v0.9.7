@@ -5,7 +5,6 @@
 
 import pytest
 
-# Перевіряємо доступність PyQt6
 try:
     from PyQt6.QtWidgets import QApplication
     app = QApplication.instance() or QApplication([])
@@ -39,6 +38,24 @@ def test_option_row_empty():
     assert correct is False
 
 
+def test_option_row_checkbox_mode():
+    """В режимі multiple використовується чекбокс."""
+    from admin.tests_tab import OptionRow
+    from PyQt6.QtWidgets import QCheckBox
+    
+    row = OptionRow("Варіант", is_single=False)
+    assert isinstance(row.correct_widget, QCheckBox)
+
+
+def test_option_row_radio_mode():
+    """В режимі single використовується радіокнопка."""
+    from admin.tests_tab import OptionRow
+    from PyQt6.QtWidgets import QRadioButton
+    
+    row = OptionRow("Варіант", is_single=True)
+    assert isinstance(row.correct_widget, QRadioButton)
+
+
 def test_add_multiple_options():
     """Можна додати кілька варіантів підряд."""
     from admin.tests_tab import OptionRow
@@ -60,3 +77,13 @@ def test_option_row_expand_exists():
     row = OptionRow("Довгий текст варіанту")
     assert hasattr(row, "expand_btn")
     assert row.expand_btn is not None
+
+
+def test_option_row_set_checked():
+    """Можна змінити стан вибору."""
+    from admin.tests_tab import OptionRow
+    
+    row = OptionRow("Варіант", is_correct=False)
+    assert row.is_checked() is False
+    row.set_checked(True)
+    assert row.is_checked() is True
