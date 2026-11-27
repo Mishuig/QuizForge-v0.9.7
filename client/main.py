@@ -61,7 +61,7 @@ class ClientWindow(QMainWindow):
         self.otp = OtpService(db, config)
 
         self.setWindowTitle("QuizForge — Тестування")
-        self.setWindowIcon(QIcon(str(ASSETS / "logo-client.svg")))
+        self.setWindowIcon(QIcon(str(ASSETS / "logo-client.png")))
         self.setMinimumSize(720, 520)
         self.resize(900, 640)
 
@@ -310,7 +310,7 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("SecureTest Client")
     app.setOrganizationName("SecureTest")
-    app.setWindowIcon(QIcon(str(ASSETS / "logo-client.svg")))
+    app.setWindowIcon(QIcon(str(ASSETS / "logo-client.png")))
 
     try:
         config = load_config()
