@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
 QSS_PATH = ROOT / "client" / "ui" / "styles.qss"
 DEFAULT_ACCENT = "#3b82f6"
+DEFAULT_THEME = "light"
 THEMES = ("dark", "light")
 
 PALETTES: dict[str, dict[str, str]] = {
@@ -49,7 +50,6 @@ PALETTES: dict[str, dict[str, str]] = {
     },
 }
 
-# Кольори тексту статусів у таблицях (контраст ≥ 4.5:1 на фоні відповідної теми)
 STATUS_COLORS: dict[str, dict[str, str]] = {
     "dark": {"ok": "#6EE7B7", "info": "#93C5FD", "warn": "#FDE68A", "bad": "#FCA5A5", "muted": "#B4C0D4"},
     "light": {"ok": "#047857", "info": "#1D4ED8", "warn": "#B45309", "bad": "#B91C1C", "muted": "#475569"},
@@ -57,14 +57,13 @@ STATUS_COLORS: dict[str, dict[str, str]] = {
 
 
 class _Bus(QObject):
-    changed = pyqtSignal(str)   # нова тема: "dark" | "light"
+    changed = pyqtSignal(str)
 
 
 bus = _Bus()
-_state: dict = {"app": None, "accent": DEFAULT_ACCENT, "theme": "dark"}
+_state: dict = {"app": None, "accent": DEFAULT_ACCENT, "theme": DEFAULT_THEME}
 
 
-# ------------------------------------------------------------------ налаштування
 def _prefs_path() -> Path:
     base = Path(sys.executable).parent if getattr(sys, "frozen", False) else ROOT
     return base / "ui_prefs.json"
@@ -90,7 +89,6 @@ def current_theme() -> str:
     return _state["theme"]
 
 
-# ------------------------------------------------------------------ кольори й іконки
 def _shade(hex_color: str, factor: float) -> str:
     c = QColor(hex_color)
     if not c.isValid():
@@ -99,7 +97,6 @@ def _shade(hex_color: str, factor: float) -> str:
 
 
 def _load_fonts(app: QApplication) -> None:
-    """Підключає Inter з папки fonts/, якщо файли там є; інакше — системний шрифт."""
     family = None
     for path in sorted((ROOT / "fonts").glob("Inter*.[ot]tf")):
         fid = QFontDatabase.addApplicationFont(str(path))
@@ -111,7 +108,6 @@ def _load_fonts(app: QApplication) -> None:
 
 
 def _write_icons(accent: str, theme: str) -> str:
-    """Генерує SVG-іконки (радіо, чекбокс, стрілки) під тему та акцент."""
     pal = PALETTES[theme]
     acc = QColor(accent).name()
     ring, bg, chevron = pal["RING"], pal["INPUT"], pal["MUTED"]
@@ -154,17 +150,15 @@ def _render_qss(accent: str, theme: str) -> str:
         "@ACCENT_SOFT@": f"rgba({soft.red()},{soft.green()},{soft.blue()},{0x2E if theme == 'dark' else 0x1F})",
         "@ICONS@": _write_icons(accent, theme),
     })
-    # довші токени першими (ACCENT_HOVER перед ACCENT тощо)
     for key in sorted(tokens, key=len, reverse=True):
         qss = qss.replace(key, tokens[key])
     return qss
 
 
-# ------------------------------------------------------------------ публічне API
-def apply_theme(app: QApplication, accent: str | None = None, default_theme: str = "dark") -> None:
-    """Застосовує тему: збережений вибір користувача → default_theme → dark."""
+def apply_theme(app: QApplication, accent: str | None = None, default_theme: str = DEFAULT_THEME) -> None:
+    """Застосовує тему: збережений вибір користувача → default_theme → light."""
     accent = accent if accent and QColor(accent).isValid() else DEFAULT_ACCENT
-    theme = _load_pref() or (default_theme if default_theme in THEMES else "dark")
+    theme = _load_pref() or (default_theme if default_theme in THEMES else DEFAULT_THEME)
     _state.update(app=app, accent=accent, theme=theme)
     _load_fonts(app)
     if not QSS_PATH.is_file():
@@ -174,26 +168,16 @@ def apply_theme(app: QApplication, accent: str | None = None, default_theme: str
 
 
 def set_theme(theme: str, persist: bool = True) -> None:
-    """Перемикає тему на льоту й сповіщає віджети (bus.changed).
-    
-    Зберігає фокус, щоб не втрачати введення під час тесту.
-    """
     if theme not in THEMES or theme == _state["theme"]:
         return
     app = _state["app"]
     if app is None or not QSS_PATH.is_file():
         return
-    
-    # Зберегти фокус
     focused = app.focusWidget()
-    
     _state["theme"] = theme
     app.setStyleSheet(_render_qss(_state["accent"], theme))
-    
-    # Відновити фокус
     if focused is not None:
         focused.setFocus()
-    
     if persist:
         _save_pref(theme)
     bus.changed.emit(theme)
@@ -204,7 +188,6 @@ def toggle_theme() -> None:
 
 
 def logo_pixmap(name: str, size: int) -> QPixmap:
-    """Логотип з assets/; у світлій темі бере варіант `*-light.*`, якщо він є."""
     path = ASSETS / name
     if _state["theme"] == "light":
         alt = ASSETS / f"{path.stem}-light{path.suffix}"
@@ -217,7 +200,6 @@ def logo_pixmap(name: str, size: int) -> QPixmap:
 
 
 def repolish(widget: QWidget) -> None:
-    """Перезастосовує QSS після зміни динамічної властивості."""
     widget.style().unpolish(widget)
     widget.style().polish(widget)
     widget.update()
@@ -229,7 +211,6 @@ def _status_color(kind: str) -> QColor:
 
 
 def status_item(text: str, kind: str = "muted") -> QTableWidgetItem:
-    """Комірка таблиці зі статусом: «● Текст» кольором статусу."""
     item = QTableWidgetItem(f"● {text}")
     item.setForeground(QBrush(_status_color(kind)))
     font = item.font()
