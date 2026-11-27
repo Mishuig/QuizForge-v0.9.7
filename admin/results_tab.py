@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 
 from core.db import Database
 from core.dialogs import Msg, ThemedDialog
-from core.ui_kit import icon_button
+from core.ui_kit import icon_button, button_row, AdaptiveLabel
 from core.ui_theme import colored_item, status_item
 from core.report_builder import build_report, send_report
 
@@ -115,15 +115,12 @@ class ResultsTab(QWidget):
 
     def _build_ui(self):
         root = QVBoxLayout(self)
-        root.setContentsMargins(32, 24, 32, 20)
+        root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(12)
 
-        header = QHBoxLayout()
-        title = QLabel("Результати")
+        title = AdaptiveLabel("Результати", max_font=22, min_font=14)
         title.setObjectName("titleLabel")
-        header.addWidget(title)
-        header.addStretch()
-        root.addLayout(header)
+        root.addWidget(title)
 
         self.table = QTableWidget(0, 9)
         self.table.setHorizontalHeaderLabels(["Користувач", "Email", "Тест", "Бали", "%", "Час", "Порушення", "Статус", "ID"])
@@ -136,9 +133,6 @@ class ResultsTab(QWidget):
         self.table.doubleClicked.connect(self._show_details)
         root.addWidget(self.table, stretch=1)
 
-        # Icon buttons
-        btns = QHBoxLayout()
-        btns.setSpacing(8)
         self.btn_details = icon_button("fa5s.eye", "Деталі", "#3b82f6", accent=True)
         self.btn_details.clicked.connect(self._show_details)
         self.btn_pdf = icon_button("fa5s.file-pdf", "Відкрити PDF")
@@ -150,11 +144,7 @@ class ResultsTab(QWidget):
         self.btn_refresh = icon_button("fa5s.sync", "Оновити")
         self.btn_refresh.clicked.connect(self.reload)
 
-        for b in (self.btn_details, self.btn_pdf, self.btn_resend, self.btn_export):
-            btns.addWidget(b)
-        btns.addStretch()
-        btns.addWidget(self.btn_refresh)
-        root.addLayout(btns)
+        root.addWidget(button_row(self.btn_details, self.btn_pdf, self.btn_resend, self.btn_export, self.btn_refresh))
 
         self.stats = QLabel("")
         self.stats.setObjectName("subtitleLabel")
