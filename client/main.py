@@ -1,6 +1,5 @@
 """
 SecureTest Client — вхід, згода, проходження тесту.
-Крок 5.
 """
 
 from __future__ import annotations
@@ -11,15 +10,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
-
-from PyQt6.QtCore import QObject, pyqtSignal
-
-
-class ViolationBridge(QObject):
-    """Місток для порушень з потоку keyboard hook у GUI-потік."""
-    violated = pyqtSignal(str, str)  # vtype, details
-
+from PyQt6.QtCore import Qt, QObject, pyqtSignal, QEvent, QTimer
+from PyQt6.QtGui import QIcon, QFontDatabase, QFont, QShortcut, QKeySequence
 from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -51,6 +43,11 @@ logging.basicConfig(
 logger = logging.getLogger("client")
 
 
+class ViolationBridge(QObject):
+    """Місток для порушень з потоку keyboard hook у GUI-потік."""
+    violated = pyqtSignal(str, str)
+
+
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -64,16 +61,10 @@ class ClientWindow(QMainWindow):
         self.otp = OtpService(db, config)
 
         self.setWindowTitle("QuizForge — Тестування")
-        try:
-            from PyQt6.QtGui import QIcon
-            self.setWindowIcon(QIcon(str(ASSETS / "logo-client.ico")))
-        except Exception:
-            pass
+        self.setWindowIcon(QIcon(str(ASSETS / "logo-client.svg")))
         self.setMinimumSize(720, 520)
         self.resize(900, 640)
 
-        # Режим розробника: Ctrl+Shift+D перемикає дебаг-бар
-        from PyQt6.QtGui import QFontDatabase, QFont,  QShortcut, QKeySequence
         self._dev_shortcut = QShortcut(QKeySequence("Ctrl+Shift+D"), self)
         self._dev_shortcut.activated.connect(self._toggle_dev)
 
@@ -190,11 +181,7 @@ class ClientWindow(QMainWindow):
             )
         except Exception as exc:
             logger.exception("Помилка старту тесту")
-            Msg.critical(
-                self,
-                "Помилка",
-                f"Не вдалося відкрити тест:\n{exc}",
-            )
+            Msg.critical(self, "Помилка", f"Не вдалося відкрити тест:\n{exc}")
             self.db.update("attempts", {"status": "blocked"}, "id = ?", (attempt_id,))
             self._show_email_screen()
             return
@@ -202,7 +189,6 @@ class ClientWindow(QMainWindow):
         self.stack.addWidget(quiz)
         self.stack.setCurrentWidget(quiz)
 
-        # Lockdown (порушення з hook-потоку → GUI через сигнал)
         self._violation_bridge = ViolationBridge()
         def _route_violation(vtype: str, details: str) -> None:
             if vtype == "blocked_key":
@@ -247,23 +233,18 @@ class ClientWindow(QMainWindow):
         self.stack.addWidget(screen)
         self.stack.setCurrentWidget(screen)
 
-
     def _toggle_dev(self) -> None:
         if self._quiz and hasattr(self._quiz, "toggle_dev_mode"):
             self._quiz.toggle_dev_mode()
 
     def changeEvent(self, event) -> None:
-        from PyQt6.QtCore import QEvent
         super().changeEvent(event)
         if event.type() == QEvent.Type.WindowStateChange and self._lockdown and self._quiz:
-            # Під час тесту згортання/вихід з повноекранного режиму неможливі
             if self.isMinimized() or not self.isFullScreen():
-                from PyQt6.QtCore import QTimer
                 QTimer.singleShot(0, self._lockdown.enforce)
             return
         if event.type() == QEvent.Type.ActivationChange:
             if self._lockdown and self._quiz and not self.isActiveWindow():
-                # Не фіксувати порушення, якщо відкритий наш діалог
                 if getattr(self._quiz, "_ignore_focus", False):
                     return
                 self._quiz.record_violation("focus_lost", "Втрата фокуса вікна")
@@ -310,7 +291,6 @@ class ClientWindow(QMainWindow):
                     f"attempt_id={self._attempt_id}",
                 )
                 logger.warning("Аварійне закриття attempt_id=%s", self._attempt_id)
-                # Звіт навіть при аварійному закритті
                 try:
                     from core.scoring import score_attempt
                     from core.report_builder import build_report, send_report
@@ -330,6 +310,7 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("SecureTest Client")
     app.setOrganizationName("SecureTest")
+    app.setWindowIcon(QIcon(str(ASSETS / "logo-client.svg")))
 
     try:
         config = load_config()
@@ -341,7 +322,7 @@ def main() -> int:
     org = config.get("organization", {})
     org_name = org.get("name", "SecureTest")
     accent = org.get("accent_color", "#3b82f6")
-    apply_theme(app, accent, org.get("theme", "dark"))
+    apply_theme(app, accent, org.get("theme", "light"))
 
     try:
         db = get_db()
@@ -351,7 +332,6 @@ def main() -> int:
         Msg.critical(None, "Помилка БД", str(exc))
         return 1
 
-    # Автоповтор невідправлених звітів
     try:
         from core.report_builder import retry_unsent_reports
         n = retry_unsent_reports(db, config)
